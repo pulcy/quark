@@ -18,16 +18,23 @@ const (
 	cloudConfigTemplate = `#cloud-config
 
 coreos:
-  etcd:
-    # generate a new token for each unique cluster from https://discovery.etcd.io/new
-    discovery: %s
-    # use $public_ipv4 if your datacenter of choice does not support private networking
-    addr: $private_ipv4:4001
-    peer-addr: $private_ipv4:7001
+  etcd2:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
+    discovery: "%s"
+    # multi-region and multi-cloud deployments need to use $public_ipv4
+    advertise-client-urls: "http://$private_ipv4:2379"
+    initial-advertise-peer-urls: "http://$private_ipv4:2380"
+    # listen on both the official ports and the legacy ports
+    # legacy ports can be omitted if your application doesn't depend on them
+    listen-client-urls: "http://0.0.0.0:2379,http://0.0.0.0:4001"
+    listen-peer-urls: "http://$private_ipv4:2380,http://$private_ipv4:7001"
   fleet:
     public-ip: $private_ipv4   # used for fleetctl ssh command
+    metadata: "region=%s"
+  update: 
+    reboot-strategy: "etcd-lock"
   units:
-    - name: etcd.service
+    - name: etcd2.service
       command: start
     - name: fleet.service
       command: start`
@@ -86,7 +93,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions)
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
 
-	userData := fmt.Sprintf(cloudConfigTemplate, options.DiscoveryUrl)
+	userData := fmt.Sprintf(cloudConfigTemplate, options.DiscoveryUrl, options.Region)
 
 	request := &godo.DropletCreateRequest{
 		Name:              options.InstanceName,
