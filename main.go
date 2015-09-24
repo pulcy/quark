@@ -19,8 +19,9 @@ var (
 
 var (
 	cmdMain = &cobra.Command{
-		Use: "droplets",
-		Run: showUsage,
+		Use:              "droplets",
+		Run:              showUsage,
+		PersistentPreRun: loadDefaults,
 	}
 
 	token string
@@ -36,6 +37,12 @@ func main() {
 
 func showUsage(cmd *cobra.Command, args []string) {
 	cmd.Usage()
+}
+
+func loadDefaults(cmd *cobra.Command, args []string) {
+	if token == "" {
+		token = os.Getenv("DIGITALOCEAN_TOKEN")
+	}
 }
 
 func newProvider() providers.CloudProvider {
