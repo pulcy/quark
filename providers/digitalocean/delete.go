@@ -2,6 +2,7 @@ package digitalocean
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"arvika.pulcy.com/iggi/droplets/providers"
@@ -18,8 +19,11 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo) error {
 			return errors.New("Not allowed to delete arvika")
 		}
 
-		// Delete DNS record
+		// Delete DNS instance records
 		if err := this.deleteDnsRecord(info.Domain, "A", d.Name, ""); err != nil {
+			return err
+		}
+		if err := this.deleteDnsRecord(info.Domain, "AAAA", d.Name, ""); err != nil {
 			return err
 		}
 
@@ -28,6 +32,15 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// Delete DNS cluster records
+	clusterName := fmt.Sprintf("%s.%s", info.Name, info.Domain)
+	if err := this.deleteDnsRecord(info.Domain, "A", clusterName, ""); err != nil {
+		return err
+	}
+	if err := this.deleteDnsRecord(info.Domain, "AAAA", clusterName, ""); err != nil {
+		return err
 	}
 
 	return nil

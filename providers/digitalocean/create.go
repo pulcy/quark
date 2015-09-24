@@ -48,7 +48,8 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions) e
 			prefix := strings.ToLower(uniuri.NewLen(8))
 			instanceOptions := &providers.CreateInstanceOptions{
 				Domain:       options.Domain,
-				Name:         fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
+				ClusterName:  fmt.Sprintf("%s.%s", options.Name, options.Domain),
+				InstanceName: fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
 				Region:       options.Region,
 				Image:        options.Image,
 				Size:         options.Size,
@@ -88,7 +89,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions)
 	userData := fmt.Sprintf(cloudConfigTemplate, options.DiscoveryUrl)
 
 	request := &godo.DropletCreateRequest{
-		Name:              options.Name,
+		Name:              options.InstanceName,
 		Region:            options.Region,
 		Size:              options.Size,
 		Image:             godo.DropletCreateImage{Slug: options.Image},
@@ -112,11 +113,23 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions)
 	}
 
 	publicIpv4 := getIpv4(*droplet, "public")
-	fmt.Printf("%s: %s\n", droplet.Name, publicIpv4)
+	publicIpv6 := getIpv6(*droplet, "public")
+	fmt.Printf("%s: %s: %s\n", droplet.Name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
-	if err := this.createDnsRecord(options.Domain, "A", options.Name, publicIpv4); err != nil {
+	if err := this.createDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 		return err
+	}
+	if err := this.createDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
+		return err
+	}
+	if publicIpv6 != "" {
+		if err := this.createDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
+			return err
+		}
+		if err := this.createDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
+			return err
+		}
 	}
 
 	return nil

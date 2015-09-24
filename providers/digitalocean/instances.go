@@ -54,3 +54,15 @@ func getIpv4(d godo.Droplet, nType string) string {
 	}
 	return ""
 }
+
+func getIpv6(d godo.Droplet, nType string) string {
+	if d.Networks == nil {
+		return ""
+	}
+	for _, n := range d.Networks.V6 {
+		if n.Type == nType {
+			return n.IPAddress
+		}
+	}
+	return ""
+}

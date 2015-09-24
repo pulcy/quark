@@ -47,8 +47,9 @@ type CreateClusterOptions struct {
 }
 
 type CreateInstanceOptions struct {
-	Domain       string
-	Name         string   // Name of the instance
+	Domain       string   // Name of the domain e.g. "example.com"
+	ClusterName  string   // Full name of the cluster e.g. "dev1.example.com"
+	InstanceName string   // Name of the instance e.g. "abc123.dev1.example.com"
 	Image        string   // Name of the image to install on the instance
 	Region       string   // Name of the region to run the instance in
 	Size         string   // Size of the instance
@@ -85,8 +86,11 @@ func (this *CreateClusterOptions) Validate() error {
 }
 
 func (this *CreateInstanceOptions) Validate() error {
-	if this.Name == "" {
-		return errors.New("Please specific a name")
+	if this.ClusterName == "" {
+		return errors.New("Please specific a cluster-name")
+	}
+	if this.InstanceName == "" {
+		return errors.New("Please specific a instance-name")
 	}
 	if this.Image == "" {
 		return errors.New("Please specific an image")

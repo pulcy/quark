@@ -31,6 +31,12 @@ func deleteCluster(cmd *cobra.Command, args []string) {
 	if token == "" {
 		Exitf("Please specify a token\n")
 	}
+	if deleteClusterFlags.Domain == "" {
+		Exitf("Please specify a domain\n")
+	}
+	if deleteClusterFlags.Name == "" {
+		Exitf("Please specify a name\n")
+	}
 	if err := confirm(fmt.Sprintf("Are you sure you want to destroy %s.%s?", deleteClusterFlags.Name, deleteClusterFlags.Domain)); err != nil {
 		Exitf("%v\n", err)
 	}
