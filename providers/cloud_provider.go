@@ -1,0 +1,107 @@
+package providers
+
+import (
+	"errors"
+	"strings"
+)
+
+type CloudProvider interface {
+	CreateAnsibleHosts(domain string, sshPort int, developersJson string) error
+	ShowRegions() error
+	ShowImages() error
+	ShowKeys() error
+
+	// Create a machine instance
+	CreateInstance(options *CreateInstanceOptions) error
+
+	// Create an entire cluster
+	CreateCluster(options *CreateClusterOptions) error
+
+	// Get names of instances of a cluster
+	GetInstances(info *ClusterInfo) ([]ClusterInstance, error)
+
+	// Remove all instances of a cluster
+	DeleteCluster(info *ClusterInfo) error
+
+	ShowDomainRecords(domain string) error
+}
+
+type ClusterInfo struct {
+	Domain string // Domain postfix (e.g. pulcy.com)
+	Name   string // Name of the cluster
+}
+
+type ClusterInstance struct {
+	Name        string
+	PrivateIpv4 string
+	PublicIpv4  string
+}
+
+type CreateClusterOptions struct {
+	ClusterInfo
+	Image         string   // Name of the image to install on each instance
+	Region        string   // Name of the region to run all instances in
+	Size          string   // Size of each instance
+	SSHKeyNames   []string // List of names of SSH keys to install on each instance
+	InstanceCount int      // Number of instances to start
+}
+
+type CreateInstanceOptions struct {
+	Domain       string
+	Name         string   // Name of the instance
+	Image        string   // Name of the image to install on the instance
+	Region       string   // Name of the region to run the instance in
+	Size         string   // Size of the instance
+	SSHKeyNames  []string // List of names of SSH keys to install
+	DiscoveryUrl string   // Discovery url for ETCD
+}
+
+func (this *CreateClusterOptions) Validate() error {
+	if this.Domain == "" {
+		return errors.New("Please specific a domain")
+	}
+	if this.Name == "" {
+		return errors.New("Please specific a name")
+	}
+	if strings.ContainsAny(this.Name, ".") {
+		return errors.New("Invalid characters in name")
+	}
+	if this.Image == "" {
+		return errors.New("Please specific an image")
+	}
+	if this.Region == "" {
+		return errors.New("Please specific a region")
+	}
+	if this.Size == "" {
+		return errors.New("Please specific a size")
+	}
+	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
+		return errors.New("Please specific at least one SSH key")
+	}
+	if this.InstanceCount < 1 {
+		return errors.New("Please specific a valid instance count")
+	}
+	return nil
+}
+
+func (this *CreateInstanceOptions) Validate() error {
+	if this.Name == "" {
+		return errors.New("Please specific a name")
+	}
+	if this.Image == "" {
+		return errors.New("Please specific an image")
+	}
+	if this.Region == "" {
+		return errors.New("Please specific a region")
+	}
+	if this.Size == "" {
+		return errors.New("Please specific a size")
+	}
+	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
+		return errors.New("Please specific at least one SSH key")
+	}
+	if this.DiscoveryUrl == "" {
+		return errors.New("Please specific a discovery URL")
+	}
+	return nil
+}
