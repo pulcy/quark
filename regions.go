@@ -16,9 +16,6 @@ func init() {
 }
 
 func showRegions(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	provider := newProvider()
 	err := provider.ShowRegions()
 	if err != nil {

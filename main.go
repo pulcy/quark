@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/iggi/droplets/providers/cloudflare"
 	"arvika.pulcy.com/iggi/droplets/providers/digitalocean"
 )
 
@@ -24,11 +25,15 @@ var (
 		PersistentPreRun: loadDefaults,
 	}
 
-	token string
+	digitalOceanToken string
+	cloudflareApiKey  string
+	cloudflareEmail   string
 )
 
 func init() {
-	cmdMain.PersistentFlags().StringVarP(&token, "token", "t", "", "Digital Ocean token")
+	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
+	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
+	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
 }
 
 func main() {
@@ -40,13 +45,32 @@ func showUsage(cmd *cobra.Command, args []string) {
 }
 
 func loadDefaults(cmd *cobra.Command, args []string) {
-	if token == "" {
-		token = os.Getenv("DIGITALOCEAN_TOKEN")
+	if digitalOceanToken == "" {
+		digitalOceanToken = os.Getenv("DIGITALOCEAN_TOKEN")
+	}
+	if cloudflareApiKey == "" {
+		cloudflareApiKey = os.Getenv("CLOUDFLARE_APIKEY")
+	}
+	if cloudflareEmail == "" {
+		cloudflareEmail = os.Getenv("CLOUDFLARE_EMAIL")
 	}
 }
 
 func newProvider() providers.CloudProvider {
-	return digitalocean.NewProvider(token)
+	if digitalOceanToken == "" {
+		Exitf("Please specify a token\n")
+	}
+	return digitalocean.NewProvider(digitalOceanToken)
+}
+
+func newDnsProvider() providers.DnsProvider {
+	if cloudflareApiKey == "" {
+		Exitf("Please specify a cloudflare-apikey\n")
+	}
+	if cloudflareEmail == "" {
+		Exitf("Please specify a cloudflare-email\n")
+	}
+	return cloudflare.NewProvider(cloudflareApiKey, cloudflareEmail)
 }
 
 func confirm(question string) error {

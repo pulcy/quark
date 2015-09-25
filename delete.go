@@ -28,9 +28,6 @@ func init() {
 }
 
 func deleteCluster(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	if deleteClusterFlags.Domain == "" {
 		Exitf("Please specify a domain\n")
 	}

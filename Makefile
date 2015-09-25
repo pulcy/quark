@@ -45,6 +45,7 @@ $(GOBUILDDIR):
 	cd $(GOPATH) && devtool go get code.google.com/p/goauth2/oauth
 	cd $(GOPATH) && devtool go get github.com/ryanuber/columnize
 	cd $(GOPATH) && devtool go get github.com/dchest/uniuri
+	cd $(GOPATH) && devtool go get github.com/juju/errgo
 	
 $(BIN): $(GOBUILDDIR) $(SOURCES) 
 	@mkdir -p $(BINDIR)
@@ -55,6 +56,6 @@ $(BIN): $(GOBUILDDIR) $(SOURCES)
 	    -e GOOS=$(GOOS) \
 	    -e GOARCH=$(GOARCH) \
 	    -w /usr/code/ \
-	    golang:1.5.1 \
-	    go build -a -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o /usr/code/$(PROJECT)
+	    golang:1.4.2-cross \
+	    go build -a -ldflags "-X main.projectVersion $(VERSION) -X main.projectBuild $(COMMIT)" -o /usr/code/$(PROJECT)
 

@@ -24,13 +24,10 @@ func init() {
 }
 
 func showDnsRecords(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	if domain == "" {
 		Exitf("Please specify a domain\n")
 	}
-	provider := newProvider()
+	provider := newDnsProvider()
 	err := provider.ShowDomainRecords(dnsDomain)
 	if err != nil {
 		Exitf("Failed to show dns records: %v\n", err)

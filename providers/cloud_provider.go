@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+type DnsProvider interface {
+	ShowDomainRecords(domain string) error
+	CreateDnsRecord(domain, recordTpe, name, data string) error
+	DeleteDnsRecord(domain, recordType, name, data string) error
+}
+
 type CloudProvider interface {
 	CreateAnsibleHosts(domain string, sshPort int, developersJson string) error
 	ShowRegions() error

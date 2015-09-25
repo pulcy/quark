@@ -39,9 +39,6 @@ func init() {
 }
 
 func createCluster(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	createClusterFlags.SSHKeyNames = []string{sshKey}
 	provider := newProvider()
 

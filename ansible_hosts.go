@@ -21,9 +21,6 @@ func init() {
 }
 
 func ansibleHosts(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	if developersJson == "" {
 		Exitf("Please specific a developers json file path\n")
 	}
