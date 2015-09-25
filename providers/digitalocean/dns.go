@@ -39,7 +39,7 @@ func trimLength(s string, maxLen int) string {
 	}
 }
 
-func (this *doProvider) createDnsRecord(domain, _type, name, data string) error {
+func (this *doProvider) CreateDnsRecord(domain, _type, name, data string) error {
 	client := NewDOClient(this.token)
 	record := &godo.DomainRecordEditRequest{
 		Type: _type,
@@ -53,7 +53,7 @@ func (this *doProvider) createDnsRecord(domain, _type, name, data string) error 
 	return nil
 }
 
-func (this *doProvider) deleteDnsRecord(domain, _type, name, data string) error {
+func (this *doProvider) DeleteDnsRecord(domain, _type, name, data string) error {
 	client := NewDOClient(this.token)
 	records, err := DomainRecordList(client, domain)
 	if err != nil {

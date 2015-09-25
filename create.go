@@ -39,9 +39,6 @@ func init() {
 }
 
 func createCluster(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	createClusterFlags.SSHKeyNames = []string{sshKey}
 	provider := newProvider()
 
@@ -60,7 +57,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
-	err = provider.CreateCluster(&createClusterFlags)
+	err = provider.CreateCluster(&createClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}

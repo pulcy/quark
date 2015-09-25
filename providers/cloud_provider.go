@@ -5,6 +5,12 @@ import (
 	"strings"
 )
 
+type DnsProvider interface {
+	ShowDomainRecords(domain string) error
+	CreateDnsRecord(domain, recordTpe, name, data string) error
+	DeleteDnsRecord(domain, recordType, name, data string) error
+}
+
 type CloudProvider interface {
 	CreateAnsibleHosts(domain string, sshPort int, developersJson string) error
 	ShowRegions() error
@@ -12,16 +18,16 @@ type CloudProvider interface {
 	ShowKeys() error
 
 	// Create a machine instance
-	CreateInstance(options *CreateInstanceOptions) error
+	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) error
 
 	// Create an entire cluster
-	CreateCluster(options *CreateClusterOptions) error
+	CreateCluster(options *CreateClusterOptions, dnsProvider DnsProvider) error
 
 	// Get names of instances of a cluster
 	GetInstances(info *ClusterInfo) ([]ClusterInstance, error)
 
 	// Remove all instances of a cluster
-	DeleteCluster(info *ClusterInfo) error
+	DeleteCluster(info *ClusterInfo, dnsProvider DnsProvider) error
 
 	ShowDomainRecords(domain string) error
 }

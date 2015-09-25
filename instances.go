@@ -24,9 +24,6 @@ func init() {
 }
 
 func showInstances(cmd *cobra.Command, args []string) {
-	if token == "" {
-		Exitf("Please specify a token\n")
-	}
 	if instancesFlags.Name == "" {
 		Exitf("Please specify a name\n")
 	}

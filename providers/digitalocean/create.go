@@ -40,7 +40,7 @@ coreos:
       command: start`
 )
 
-func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions) error {
+func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	discoveryUrl, err := newDiscoveryUrl()
 	if err != nil {
 		return err
@@ -63,7 +63,7 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions) e
 				DiscoveryUrl: discoveryUrl,
 				SSHKeyNames:  options.SSHKeyNames,
 			}
-			err := this.CreateInstance(instanceOptions)
+			err := this.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil && lastErr != nil {
 				lastErr = err
 			}
@@ -77,7 +77,7 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions) e
 	return nil
 }
 
-func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions) error {
+func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) error {
 	client := NewDOClient(this.token)
 
 	keys := []godo.DropletCreateSSHKey{}
@@ -124,17 +124,17 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions)
 	fmt.Printf("%s: %s: %s\n", droplet.Name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
-	if err := this.createDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
+	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 		return err
 	}
-	if err := this.createDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
+	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
 		return err
 	}
 	if publicIpv6 != "" {
-		if err := this.createDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
+		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
 			return err
 		}
-		if err := this.createDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
+		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
 			return err
 		}
 	}
