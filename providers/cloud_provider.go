@@ -18,16 +18,16 @@ type CloudProvider interface {
 	ShowKeys() error
 
 	// Create a machine instance
-	CreateInstance(options *CreateInstanceOptions) error
+	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) error
 
 	// Create an entire cluster
-	CreateCluster(options *CreateClusterOptions) error
+	CreateCluster(options *CreateClusterOptions, dnsProvider DnsProvider) error
 
 	// Get names of instances of a cluster
 	GetInstances(info *ClusterInfo) ([]ClusterInstance, error)
 
 	// Remove all instances of a cluster
-	DeleteCluster(info *ClusterInfo) error
+	DeleteCluster(info *ClusterInfo, dnsProvider DnsProvider) error
 
 	ShowDomainRecords(domain string) error
 }

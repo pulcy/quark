@@ -81,6 +81,15 @@ func (p *cfProvider) get(url, contentType string) (*cfResponse, error) {
 	return res, nil
 }
 
+func (p *cfProvider) delete(url string) (*cfResponse, error) {
+	res, err := p.request("DELETE", url, nil, nil)
+	if err != nil {
+		return nil, maskAny(err)
+	}
+
+	return res, nil
+}
+
 func (p *cfProvider) post(url, contentType string, payload io.Reader) (*cfResponse, error) {
 	headers := map[string]string{
 		"Content-Type": contentType,

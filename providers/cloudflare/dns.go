@@ -42,11 +42,11 @@ func (p *cfProvider) zoneID(domain string) (string, error) {
 }
 
 type CfDnsRecord struct {
-	ID      string `json:"id"`
+	ID      string `json:"id,omitempty"`
 	Type    string `json:"type"`
 	Name    string `json:"name"`
 	Content string `json:"content"`
-	TTL     int    `json:"ttl'`
+	TTL     int    `json:"ttl,omitempty'`
 }
 
 func (p *cfProvider) ShowDomainRecords(domain string) error {
@@ -89,10 +89,56 @@ func trimLength(s string, maxLen int) string {
 	}
 }
 
-func (p *cfProvider) CreateDnsRecord(domain, recordTpe, name, data string) error {
+func (p *cfProvider) CreateDnsRecord(domain, recordType, name, data string) error {
+	id, err := p.zoneID(domain)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	url := apiUrl + fmt.Sprintf("zones/%s/dns_records", id)
+	record := &CfDnsRecord{
+		Type:    recordType,
+		Name:    name,
+		Content: data,
+	}
+	_, err = p.postJson(url, record)
+	if err != nil {
+		return maskAny(err)
+	}
 	return nil
 }
 
 func (p *cfProvider) DeleteDnsRecord(domain, recordType, name, data string) error {
+	id, err := p.zoneID(domain)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	url := apiUrl + fmt.Sprintf("zones/%s/dns_records", id)
+	res, err := p.get(url, "application/json")
+	if err != nil {
+		return maskAny(err)
+	}
+
+	records := []CfDnsRecord{}
+	if err := res.UnmarshalResult(&records); err != nil {
+		return maskAny(err)
+	}
+
+	for _, r := range records {
+		if r.Type != recordType || r.Name != name {
+			continue
+		}
+		if data != "" && r.Content != data {
+			continue
+		}
+		// Found matching record
+		url := apiUrl + fmt.Sprintf("zones/%s/dns_records/%s", id, r.ID)
+		_, err := p.delete(url)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }

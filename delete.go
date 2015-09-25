@@ -38,7 +38,7 @@ func deleteCluster(cmd *cobra.Command, args []string) {
 		Exitf("%v\n", err)
 	}
 	provider := newProvider()
-	err := provider.DeleteCluster(&deleteClusterFlags)
+	err := provider.DeleteCluster(&deleteClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to delete cluster: %v\n", err)
 	}

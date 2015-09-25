@@ -8,7 +8,7 @@ import (
 	"arvika.pulcy.com/iggi/droplets/providers"
 )
 
-func (this *doProvider) DeleteCluster(info *providers.ClusterInfo) error {
+func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
 	droplets, err := this.getInstances(info)
 	if err != nil {
 		return err
@@ -20,10 +20,10 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo) error {
 		}
 
 		// Delete DNS instance records
-		if err := this.deleteDnsRecord(info.Domain, "A", d.Name, ""); err != nil {
+		if err := dnsProvider.DeleteDnsRecord(info.Domain, "A", d.Name, ""); err != nil {
 			return err
 		}
-		if err := this.deleteDnsRecord(info.Domain, "AAAA", d.Name, ""); err != nil {
+		if err := dnsProvider.DeleteDnsRecord(info.Domain, "AAAA", d.Name, ""); err != nil {
 			return err
 		}
 
@@ -36,10 +36,10 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo) error {
 
 	// Delete DNS cluster records
 	clusterName := fmt.Sprintf("%s.%s", info.Name, info.Domain)
-	if err := this.deleteDnsRecord(info.Domain, "A", clusterName, ""); err != nil {
+	if err := dnsProvider.DeleteDnsRecord(info.Domain, "A", clusterName, ""); err != nil {
 		return err
 	}
-	if err := this.deleteDnsRecord(info.Domain, "AAAA", clusterName, ""); err != nil {
+	if err := dnsProvider.DeleteDnsRecord(info.Domain, "AAAA", clusterName, ""); err != nil {
 		return err
 	}
 
