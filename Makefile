@@ -6,7 +6,7 @@ COMMIT := $(shell git rev-parse --short HEAD)
 
 GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
-BINDIR := $(ROOTDIR)/bin
+BINDIR := $(ROOTDIR)
 
 ORGPATH := arvika.pulcy.com/iggi
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
@@ -39,16 +39,15 @@ deps:
 $(GOBUILDDIR): 
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
-	cd $(GOPATH) && devtool go get github.com/spf13/pflag
-	cd $(GOPATH) && devtool go get github.com/spf13/cobra
-	cd $(GOPATH) && devtool go get github.com/digitalocean/godo
-	cd $(GOPATH) && devtool go get code.google.com/p/goauth2/oauth
-	cd $(GOPATH) && devtool go get github.com/ryanuber/columnize
-	cd $(GOPATH) && devtool go get github.com/dchest/uniuri
-	cd $(GOPATH) && devtool go get github.com/juju/errgo
+	@cd $(GOPATH) && pulcy go get github.com/spf13/pflag
+	@cd $(GOPATH) && pulcy go get github.com/spf13/cobra
+	@cd $(GOPATH) && pulcy go get github.com/digitalocean/godo
+	@cd $(GOPATH) && pulcy go get code.google.com/p/goauth2/oauth
+	@cd $(GOPATH) && pulcy go get github.com/ryanuber/columnize
+	@cd $(GOPATH) && pulcy go get github.com/dchest/uniuri
+	@cd $(GOPATH) && pulcy go get github.com/juju/errgo
 	
 $(BIN): $(GOBUILDDIR) $(SOURCES) 
-	@mkdir -p $(BINDIR)
 	docker run \
 	    --rm \
 	    -v $(ROOTDIR):/usr/code \
