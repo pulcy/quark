@@ -36,7 +36,7 @@ coreos:
         ExecStartPre=-/bin/sh -c 'rm -f /home/core/bin/yard'
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
         ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
-        ExecStart=/opt/bin/home/core/yard setup \
+        ExecStart=/home/core/bin/yard setup \
         --stunnel-pem-passphrase=${STUNNEL_PEM_PASSPHRASE} \
         --weave-password=${WEAVE_PASSWORD} 
         RemainAfterExit=yes
