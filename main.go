@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 
 	"arvika.pulcy.com/iggi/droplets/providers"
@@ -28,9 +29,12 @@ var (
 	digitalOceanToken string
 	cloudflareApiKey  string
 	cloudflareEmail   string
+
+	log = logging.MustGetLogger(cmdMain.Use)
 )
 
 func init() {
+	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
@@ -60,7 +64,7 @@ func newProvider() providers.CloudProvider {
 	if digitalOceanToken == "" {
 		Exitf("Please specify a token\n")
 	}
-	return digitalocean.NewProvider(digitalOceanToken)
+	return digitalocean.NewProvider(log, digitalOceanToken)
 }
 
 func newDnsProvider() providers.DnsProvider {
@@ -70,7 +74,7 @@ func newDnsProvider() providers.DnsProvider {
 	if cloudflareEmail == "" {
 		Exitf("Please specify a cloudflare-email\n")
 	}
-	return cloudflare.NewProvider(cloudflareApiKey, cloudflareEmail)
+	return cloudflare.NewProvider(log, cloudflareApiKey, cloudflareEmail)
 }
 
 func confirm(question string) error {

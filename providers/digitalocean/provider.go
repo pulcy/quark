@@ -1,15 +1,19 @@
 package digitalocean
 
 import (
+	"github.com/op/go-logging"
+
 	"arvika.pulcy.com/iggi/droplets/providers"
 )
 
 type doProvider struct {
-	token string
+	Logger *logging.Logger
+	token  string
 }
 
-func NewProvider(token string) providers.CloudProvider {
+func NewProvider(logger *logging.Logger, token string) providers.CloudProvider {
 	return &doProvider{
-		token: token,
+		Logger: logger,
+		token:  token,
 	}
 }

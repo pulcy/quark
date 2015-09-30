@@ -11,14 +11,9 @@ import (
 
 	"github.com/dchest/uniuri"
 	"github.com/digitalocean/godo"
-	"github.com/juju/errgo"
 
 	"arvika.pulcy.com/iggi/droplets/providers"
 	"arvika.pulcy.com/iggi/droplets/templates"
-)
-
-var (
-	maskAny = errgo.MaskFunc(errgo.Any)
 )
 
 const (
@@ -119,12 +114,14 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 	}
 
 	// Create droplet
+	this.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.Image)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
 		return err
 	}
 
 	// Wait for active
+	this.Logger.Info("Waiting for droplet '%s'", createDroplet.Name)
 	droplet, err := this.waitUntilDropletActive(createDroplet.ID)
 	if err != nil {
 		return nil
@@ -135,6 +132,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 	fmt.Printf("%s: %s: %s\n", droplet.Name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
+	this.Logger.Info("Creating DNS records '%s'", createDroplet.Name)
 	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 		return err
 	}
@@ -149,6 +147,8 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 			return err
 		}
 	}
+
+	this.Logger.Info("Droplet '%s' is ready", createDroplet.Name)
 
 	return nil
 }

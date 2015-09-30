@@ -51,6 +51,7 @@ $(GOBUILDDIR):
 	@cd $(GOPATH) && pulcy go get github.com/ryanuber/columnize
 	@cd $(GOPATH) && pulcy go get github.com/dchest/uniuri
 	@cd $(GOPATH) && pulcy go get github.com/juju/errgo
+	@cd $(GOPATH) && pulcy go get github.com/op/go-logging
 	
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go
 	docker run \

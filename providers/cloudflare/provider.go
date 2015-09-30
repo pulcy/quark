@@ -7,6 +7,8 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/op/go-logging"
+
 	"arvika.pulcy.com/iggi/droplets/providers"
 )
 
@@ -15,12 +17,14 @@ const (
 )
 
 type cfProvider struct {
+	Logger *logging.Logger
 	apiKey string
 	email  string
 }
 
-func NewProvider(apiKey, email string) providers.DnsProvider {
+func NewProvider(logger *logging.Logger, apiKey, email string) providers.DnsProvider {
 	return &cfProvider{
+		Logger: logger,
 		apiKey: apiKey,
 		email:  email,
 	}
