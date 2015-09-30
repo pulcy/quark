@@ -31,10 +31,14 @@ coreos:
         Type=oneshot
         Environment=YARD_PASSPHRASE={{quote .YardPassphrase}}
         Environment=STUNNEL_PEM_PASSPHRASE={{quote .StunnelPemPassphrase}}
+        Environment=WEAVE_PASSWORD={{quote .WeavePassword}}
         ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
+        ExecStartPre=-/bin/sh -c 'rm -f /home/core/bin/yard'
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
         ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
-        ExecStart=/opt/binhome/core/yard setup 
+        ExecStart=/opt/bin/home/core/yard setup \
+        --stunnel-pem-passphrase=${STUNNEL_PEM_PASSPHRASE} \
+        --weave-password=${WEAVE_PASSWORD} 
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target

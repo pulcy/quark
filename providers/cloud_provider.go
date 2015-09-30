@@ -53,6 +53,7 @@ type CreateClusterOptions struct {
 	YardPassphrase       string   // Passphrase for decrypting yard
 	YardImage            string   // Docker image containing encrypted yard
 	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
+	WeavePassword        string   // Password used to encrypt weave inter-hosts communication
 }
 
 type CreateInstanceOptions struct {
@@ -67,6 +68,7 @@ type CreateInstanceOptions struct {
 	YardPassphrase       string   // Passphrase for decrypting yard
 	YardImage            string   // Docker image containing encrypted yard
 	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
+	WeavePassword        string   // Password used to encrypt weave inter-hosts communication
 }
 
 func (this *CreateClusterOptions) Validate() error {
@@ -103,6 +105,9 @@ func (this *CreateClusterOptions) Validate() error {
 	if this.StunnelPemPassphrase == "" {
 		return errors.New("Please specific a stunnel-pem-passphrase")
 	}
+	if this.WeavePassword == "" {
+		return errors.New("Please specific a weave-password")
+	}
 	return nil
 }
 
@@ -134,8 +139,8 @@ func (this *CreateInstanceOptions) Validate() error {
 	if this.YardPassphrase == "" {
 		return errors.New("Please specific a yard-passphrase")
 	}
-	if this.StunnelPemPassphrase == "" {
-		return errors.New("Please specific a stunnel-pem-passphrase")
+	if this.WeavePassword == "" {
+		return errors.New("Please specific a weave-password")
 	}
 	return nil
 }

@@ -1,8 +1,10 @@
 package main
 
 import (
-	"arvika.pulcy.com/iggi/droplets/providers"
+	"github.com/dchest/uniuri"
 	"github.com/spf13/cobra"
+
+	"arvika.pulcy.com/iggi/droplets/providers"
 )
 
 const (
@@ -11,7 +13,7 @@ const (
 	defaultClusterRegion = "ams3"
 	defaultClusterSize   = "512mb"
 	defaultInstanceCount = 3
-	defaultYardImage     = "ewoutp/igy:0.0.3"
+	defaultYardImage     = "ewoutp/igy:0.0.4"
 	sshKey               = "ewout@prangsma.net"
 )
 
@@ -38,6 +40,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("YARD_PASSPHRASE", ""), "Passphrase used to decrypt yard.gpg")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.StunnelPemPassphrase, "stunnel-pem-passphrase", def("STUNNEL_PEM_PASSPHRASE", ""), "Passphrase used to decrypt stunnel.pem.gpg")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.WeavePassword, "weave-password", def("WEAVE_PASSWORD", newWeavePassword()), "Password used to encrypt weave inter-host traffic")
 	cmdCreate.AddCommand(cmdCreateCluster)
 	cmdMain.AddCommand(cmdCreate)
 }
@@ -48,7 +51,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 
 	// Validate
 	if err := createClusterFlags.Validate(); err != nil {
-		Exitf("%s\n", err.Error())
+		Exitf("Create failed: %s\n", err.Error())
 	}
 
 	// See if there are already instances for the given cluster
@@ -65,4 +68,10 @@ func createCluster(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}
+
+	Infof("Cluster created\n")
+}
+
+func newWeavePassword() string {
+	return uniuri.NewLen(uniuri.UUIDLen)
 }

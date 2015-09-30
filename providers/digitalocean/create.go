@@ -32,7 +32,8 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 	}
 
 	wg := sync.WaitGroup{}
-	var lastErr error
+	errors := make(chan error, options.InstanceCount)
+	defer close(errors)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -50,16 +51,18 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 				YardImage:            options.YardImage,
 				YardPassphrase:       options.YardPassphrase,
 				StunnelPemPassphrase: options.StunnelPemPassphrase,
+				WeavePassword:        options.WeavePassword,
 			}
 			err := this.CreateInstance(instanceOptions, dnsProvider)
-			if err != nil && lastErr != nil {
-				lastErr = err
+			if err != nil {
+				errors <- err
 			}
 		}(i)
 	}
 	wg.Wait()
-	if lastErr != nil {
-		return lastErr
+	err = <-errors
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -88,6 +91,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		YardPassphrase       string
 		StunnelPemPassphrase string
 		YardImage            string
+		WeavePassword        string
 	}{
 		DiscoveryUrl:         options.DiscoveryUrl,
 		Region:               options.Region,
@@ -95,6 +99,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		YardPassphrase:       options.YardPassphrase,
 		StunnelPemPassphrase: options.StunnelPemPassphrase,
 		YardImage:            options.YardImage,
+		WeavePassword:        options.WeavePassword,
 	}
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {

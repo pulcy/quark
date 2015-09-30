@@ -94,6 +94,10 @@ func Exitf(format string, args ...interface{}) {
 	os.Exit(1)
 }
 
+func Infof(format string, args ...interface{}) {
+	fmt.Printf(format, args...)
+}
+
 func def(envKey, defaultValue string) string {
 	s := os.Getenv(envKey)
 	if s == "" {
