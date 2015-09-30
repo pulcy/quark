@@ -29,9 +29,9 @@ coreos:
         After=docker.service
         [Service]
         Type=oneshot
-        Environment=YARD_PASSPHRASE={{quote .YardPassphrase}}
-        Environment=STUNNEL_PEM_PASSPHRASE={{quote .StunnelPemPassphrase}}
-        Environment=WEAVE_PASSWORD={{quote .WeavePassword}}
+        Environment=YARD_PASSPHRASE={{.YardPassphrase}}
+        Environment=STUNNEL_PEM_PASSPHRASE={{.StunnelPemPassphrase}}
+        Environment=WEAVE_PASSWORD={{.WeavePassword}}
         ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
         ExecStartPre=-/bin/sh -c 'rm -f /home/core/bin/yard'
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
