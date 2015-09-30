@@ -23,7 +23,7 @@ const (
 func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	discoveryUrl, err := newDiscoveryUrl()
 	if err != nil {
-		return err
+		return maskAny(err)
 	}
 
 	wg := sync.WaitGroup{}
@@ -50,14 +50,14 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 			}
 			err := this.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
-				errors <- err
+				errors <- maskAny(err)
 			}
 		}(i)
 	}
 	wg.Wait()
 	err = <-errors
 	if err != nil {
-		return err
+		return maskAny(err)
 	}
 
 	return nil
@@ -69,12 +69,12 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 	keys := []godo.DropletCreateSSHKey{}
 	listedKeys, err := KeyList(client)
 	if err != nil {
-		return err
+		return maskAny(err)
 	}
 	for _, key := range options.SSHKeyNames {
 		k := findKeyId(key, listedKeys)
 		if k == nil {
-			return errors.New("Key not found")
+			return maskAny(errors.New("Key not found"))
 		}
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
@@ -117,34 +117,34 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 	this.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.Image)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
-		return err
+		return maskAny(err)
 	}
 
 	// Wait for active
 	this.Logger.Info("Waiting for droplet '%s'", createDroplet.Name)
 	droplet, err := this.waitUntilDropletActive(createDroplet.ID)
 	if err != nil {
-		return nil
+		return maskAny(err)
 	}
 
 	publicIpv4 := getIpv4(*droplet, "public")
 	publicIpv6 := getIpv6(*droplet, "public")
-	fmt.Printf("%s: %s: %s\n", droplet.Name, publicIpv4, publicIpv6)
+	this.Logger.Info("%s: %s: %s", droplet.Name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
 	this.Logger.Info("Creating DNS records '%s'", createDroplet.Name)
 	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
-		return err
+		return maskAny(err)
 	}
 	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
-		return err
+		return maskAny(err)
 	}
 	if publicIpv6 != "" {
 		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
-			return err
+			return maskAny(err)
 		}
 		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
-			return err
+			return maskAny(err)
 		}
 	}
 
@@ -164,7 +164,7 @@ func (this *doProvider) waitUntilDropletActive(id int) (*godo.Droplet, error) {
 			return droplet, nil
 		}
 		// Wait a while
-		time.Sleep(time.Millisecond * 250)
+		time.Sleep(time.Second * 5)
 	}
 }
 
