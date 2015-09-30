@@ -28,7 +28,6 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
-	defer close(errors)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -55,6 +54,7 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 		}(i)
 	}
 	wg.Wait()
+	close(errors)
 	err = <-errors
 	if err != nil {
 		return maskAny(err)
