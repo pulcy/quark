@@ -1,0 +1,41 @@
+#cloud-config
+
+coreos:
+  etcd2:
+    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
+    discovery: {{quote .DiscoveryUrl}}
+    # multi-region and multi-cloud deployments need to use $public_ipv4
+    advertise-client-urls: "http://{{.PrivateIPv4}}:2379"
+    initial-advertise-peer-urls: "http://{{.PrivateIPv4}}:2380"
+    # listen on both the official ports and the legacy ports
+    # legacy ports can be omitted if your application doesn't depend on them
+    listen-client-urls: "http://0.0.0.0:2379,http://0.0.0.0:4001"
+    listen-peer-urls: "http://{{.PrivateIPv4}}:2380,http://{{.PrivateIPv4}}:7001"
+  fleet:
+    public-ip: $private_ipv4   # used for fleetctl ssh command
+    metadata: "region={{.Region}}"
+  update: 
+    reboot-strategy: "etcd-lock"
+  units:
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
+    - name: yard.service
+      command: start
+      enable: true
+      content: |
+        [Unit]
+        After=docker.service
+        [Service]
+        Type=oneshot
+        Environment=YARD_PASSPHRASE={{quote .YardPassphrase}}
+        Environment=STUNNEL_PEM_PASSPHRASE={{quote .StunnelPemPassphrase}}
+        ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
+        ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
+        ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
+        ExecStart=/opt/binhome/core/yard setup 
+        RemainAfterExit=yes
+        [Install]
+        WantedBy=multi-user.target
+

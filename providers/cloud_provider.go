@@ -45,22 +45,28 @@ type ClusterInstance struct {
 
 type CreateClusterOptions struct {
 	ClusterInfo
-	Image         string   // Name of the image to install on each instance
-	Region        string   // Name of the region to run all instances in
-	Size          string   // Size of each instance
-	SSHKeyNames   []string // List of names of SSH keys to install on each instance
-	InstanceCount int      // Number of instances to start
+	Image                string   // Name of the image to install on each instance
+	Region               string   // Name of the region to run all instances in
+	Size                 string   // Size of each instance
+	SSHKeyNames          []string // List of names of SSH keys to install on each instance
+	InstanceCount        int      // Number of instances to start
+	YardPassphrase       string   // Passphrase for decrypting yard
+	YardImage            string   // Docker image containing encrypted yard
+	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
 }
 
 type CreateInstanceOptions struct {
-	Domain       string   // Name of the domain e.g. "example.com"
-	ClusterName  string   // Full name of the cluster e.g. "dev1.example.com"
-	InstanceName string   // Name of the instance e.g. "abc123.dev1.example.com"
-	Image        string   // Name of the image to install on the instance
-	Region       string   // Name of the region to run the instance in
-	Size         string   // Size of the instance
-	SSHKeyNames  []string // List of names of SSH keys to install
-	DiscoveryUrl string   // Discovery url for ETCD
+	Domain               string   // Name of the domain e.g. "example.com"
+	ClusterName          string   // Full name of the cluster e.g. "dev1.example.com"
+	InstanceName         string   // Name of the instance e.g. "abc123.dev1.example.com"
+	Image                string   // Name of the image to install on the instance
+	Region               string   // Name of the region to run the instance in
+	Size                 string   // Size of the instance
+	SSHKeyNames          []string // List of names of SSH keys to install
+	DiscoveryUrl         string   // Discovery url for ETCD
+	YardPassphrase       string   // Passphrase for decrypting yard
+	YardImage            string   // Docker image containing encrypted yard
+	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
 }
 
 func (this *CreateClusterOptions) Validate() error {
@@ -88,6 +94,15 @@ func (this *CreateClusterOptions) Validate() error {
 	if this.InstanceCount < 1 {
 		return errors.New("Please specific a valid instance count")
 	}
+	if this.YardImage == "" {
+		return errors.New("Please specific a yard-image")
+	}
+	if this.YardPassphrase == "" {
+		return errors.New("Please specific a yard-passphrase")
+	}
+	if this.StunnelPemPassphrase == "" {
+		return errors.New("Please specific a stunnel-pem-passphrase")
+	}
 	return nil
 }
 
@@ -112,6 +127,15 @@ func (this *CreateInstanceOptions) Validate() error {
 	}
 	if this.DiscoveryUrl == "" {
 		return errors.New("Please specific a discovery URL")
+	}
+	if this.YardImage == "" {
+		return errors.New("Please specific a yard-image")
+	}
+	if this.YardPassphrase == "" {
+		return errors.New("Please specific a yard-passphrase")
+	}
+	if this.StunnelPemPassphrase == "" {
+		return errors.New("Please specific a stunnel-pem-passphrase")
 	}
 	return nil
 }

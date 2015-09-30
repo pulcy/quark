@@ -11,6 +11,7 @@ const (
 	defaultClusterRegion = "ams3"
 	defaultClusterSize   = "512mb"
 	defaultInstanceCount = 3
+	defaultYardImage     = "ewoutp/igy:0.0.3"
 	sshKey               = "ewout@prangsma.net"
 )
 
@@ -34,6 +35,9 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the droplets in")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Size, "size", defaultClusterSize, "Size of the new droplet")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("YARD_PASSPHRASE", ""), "Passphrase used to decrypt yard.gpg")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.StunnelPemPassphrase, "stunnel-pem-passphrase", def("STUNNEL_PEM_PASSPHRASE", ""), "Passphrase used to decrypt stunnel.pem.gpg")
 	cmdCreate.AddCommand(cmdCreateCluster)
 	cmdMain.AddCommand(cmdCreate)
 }

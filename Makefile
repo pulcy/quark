@@ -14,6 +14,7 @@ REPONAME := $(PROJECT)
 REPODIR := $(ORGDIR)/$(REPONAME)
 REPOPATH := $(ORGPATH)/$(REPONAME)
 BIN := $(BINDIR)/$(PROJECT)
+GOBINDATA := $(GOBUILDDIR)/bin/go-bindata
 
 GOPATH := $(GOBUILDDIR)
 
@@ -25,6 +26,7 @@ ifndef GOARCH
 endif	
 
 SOURCES := $(shell find $(SRCDIR) -name '*.go')
+TEMPLATES := $(shell find $(SRCDIR) -name '*.tmpl')
 
 .PHONY: all clean deps 
 
@@ -34,7 +36,10 @@ clean:
 	rm -Rf $(BIN) $(GOBUILDDIR)
 
 deps: 
-	@${MAKE} -B -s $(GOBUILDDIR)
+	@${MAKE} -B -s $(GOBUILDDIR) $(GOBINDATA)
+
+$(GOBINDATA):
+	GOPATH=$(GOPATH) go get github.com/jteeuwen/go-bindata/...
 
 $(GOBUILDDIR): 
 	@mkdir -p $(ORGDIR)
@@ -47,7 +52,7 @@ $(GOBUILDDIR):
 	@cd $(GOPATH) && pulcy go get github.com/dchest/uniuri
 	@cd $(GOPATH) && pulcy go get github.com/juju/errgo
 	
-$(BIN): $(GOBUILDDIR) $(SOURCES) 
+$(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go
 	docker run \
 	    --rm \
 	    -v $(ROOTDIR):/usr/code \
@@ -58,3 +63,6 @@ $(BIN): $(GOBUILDDIR) $(SOURCES)
 	    golang:1.4.2-cross \
 	    go build -a -ldflags "-X main.projectVersion $(VERSION) -X main.projectBuild $(COMMIT)" -o /usr/code/$(PROJECT)
 
+# Special rule, because this file is generated
+templates/templates_bindata.go: $(TEMPLATES) $(GOBINDATA)
+	$(GOBINDATA) -pkg templates -o templates/templates_bindata.go templates/

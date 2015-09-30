@@ -9,35 +9,20 @@ import (
 	"sync"
 	"time"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
 	"github.com/dchest/uniuri"
 	"github.com/digitalocean/godo"
+	"github.com/juju/errgo"
+
+	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/iggi/droplets/templates"
+)
+
+var (
+	maskAny = errgo.MaskFunc(errgo.Any)
 )
 
 const (
-	cloudConfigTemplate = `#cloud-config
-
-coreos:
-  etcd2:
-    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
-    discovery: "%s"
-    # multi-region and multi-cloud deployments need to use $public_ipv4
-    advertise-client-urls: "http://$private_ipv4:2379"
-    initial-advertise-peer-urls: "http://$private_ipv4:2380"
-    # listen on both the official ports and the legacy ports
-    # legacy ports can be omitted if your application doesn't depend on them
-    listen-client-urls: "http://0.0.0.0:2379,http://0.0.0.0:4001"
-    listen-peer-urls: "http://$private_ipv4:2380,http://$private_ipv4:7001"
-  fleet:
-    public-ip: $private_ipv4   # used for fleetctl ssh command
-    metadata: "region=%s"
-  update: 
-    reboot-strategy: "etcd-lock"
-  units:
-    - name: etcd2.service
-      command: start
-    - name: fleet.service
-      command: start`
+	cloudConfigTemplate = "templates/cloud-config.tmpl"
 )
 
 func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
@@ -54,14 +39,17 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 			defer wg.Done()
 			prefix := strings.ToLower(uniuri.NewLen(8))
 			instanceOptions := &providers.CreateInstanceOptions{
-				Domain:       options.Domain,
-				ClusterName:  fmt.Sprintf("%s.%s", options.Name, options.Domain),
-				InstanceName: fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
-				Region:       options.Region,
-				Image:        options.Image,
-				Size:         options.Size,
-				DiscoveryUrl: discoveryUrl,
-				SSHKeyNames:  options.SSHKeyNames,
+				Domain:               options.Domain,
+				ClusterName:          fmt.Sprintf("%s.%s", options.Name, options.Domain),
+				InstanceName:         fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
+				Region:               options.Region,
+				Image:                options.Image,
+				Size:                 options.Size,
+				DiscoveryUrl:         discoveryUrl,
+				SSHKeyNames:          options.SSHKeyNames,
+				YardImage:            options.YardImage,
+				YardPassphrase:       options.YardPassphrase,
+				StunnelPemPassphrase: options.StunnelPemPassphrase,
 			}
 			err := this.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil && lastErr != nil {
@@ -93,7 +81,25 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
 
-	userData := fmt.Sprintf(cloudConfigTemplate, options.DiscoveryUrl, options.Region)
+	opts := struct {
+		DiscoveryUrl         string
+		Region               string
+		PrivateIPv4          string
+		YardPassphrase       string
+		StunnelPemPassphrase string
+		YardImage            string
+	}{
+		DiscoveryUrl:         options.DiscoveryUrl,
+		Region:               options.Region,
+		PrivateIPv4:          "$private_ipv4",
+		YardPassphrase:       options.YardPassphrase,
+		StunnelPemPassphrase: options.StunnelPemPassphrase,
+		YardImage:            options.YardImage,
+	}
+	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
+	if err != nil {
+		return maskAny(err)
+	}
 
 	request := &godo.DropletCreateRequest{
 		Name:              options.InstanceName,
@@ -104,7 +110,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		Backups:           false,
 		IPv6:              true,
 		PrivateNetworking: true,
-		UserData:          userData,
+		UserData:          cloudConfig,
 	}
 
 	// Create droplet
