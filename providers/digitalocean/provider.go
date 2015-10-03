@@ -3,7 +3,7 @@ package digitalocean
 import (
 	"github.com/op/go-logging"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/providers"
 )
 
 type doProvider struct {

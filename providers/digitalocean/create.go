@@ -12,8 +12,8 @@ import (
 	"github.com/dchest/uniuri"
 	"github.com/digitalocean/godo"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
-	"arvika.pulcy.com/iggi/droplets/templates"
+	"arvika.pulcy.com/pulcy/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/templates"
 )
 
 const (

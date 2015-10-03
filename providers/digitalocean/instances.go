@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/providers"
 	"github.com/digitalocean/godo"
 )
 

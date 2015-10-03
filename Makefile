@@ -8,7 +8,7 @@ GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)
 
-ORGPATH := arvika.pulcy.com/iggi
+ORGPATH := arvika.pulcy.com/pulcy
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
 REPONAME := $(PROJECT)
 REPODIR := $(ORGDIR)/$(REPONAME)

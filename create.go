@@ -4,11 +4,11 @@ import (
 	"github.com/dchest/uniuri"
 	"github.com/spf13/cobra"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/providers"
 )
 
 const (
-	defaultDomain        = "iggi.xyz"
+	defaultDomain        = "pulcy.com"
 	defaultClusterImage  = "coreos-stable"
 	defaultClusterRegion = "ams3"
 	defaultClusterSize   = "512mb"

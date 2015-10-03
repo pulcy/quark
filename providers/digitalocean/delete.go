@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/providers"
 )
 
 func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {

@@ -8,9 +8,9 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
-	"arvika.pulcy.com/iggi/droplets/providers/cloudflare"
-	"arvika.pulcy.com/iggi/droplets/providers/digitalocean"
+	"arvika.pulcy.com/pulcy/droplets/providers"
+	"arvika.pulcy.com/pulcy/droplets/providers/cloudflare"
+	"arvika.pulcy.com/pulcy/droplets/providers/digitalocean"
 )
 
 var (

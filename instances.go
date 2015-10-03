@@ -3,9 +3,10 @@ package main
 import (
 	"fmt"
 
-	"arvika.pulcy.com/iggi/droplets/providers"
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
+
+	"arvika.pulcy.com/pulcy/droplets/providers"
 )
 
 var (
