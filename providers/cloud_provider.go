@@ -81,6 +81,7 @@ type CloudConfigOptions struct {
 	StunnelPemPassphrase string
 	YardImage            string
 	FlannelNetworkCidr   string
+	IncludeSshKeys       bool
 }
 
 func (this *CreateClusterOptions) Validate() error {

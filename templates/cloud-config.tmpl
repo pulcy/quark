@@ -61,3 +61,9 @@ coreos:
         [Install]
         WantedBy=multi-user.target
 
+{{ if .IncludeSshKeys }}
+ssh_authorized_keys:
+- ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAIBfcu+ZwnD0E6ouxcnIKmEkADmP0tmsOYH8V3cLMkqYeXsTrvrDxdkXcU69ljZ5z4K25KFbxUZTLPnvvWa8+Wp97RRwKz4v3PG4LBI7af8r4gAcqMN0D5goSZr+6G89HdVDzwFhXNOtEXVAu2n9deKbP2DVJ2SzDBzISwziUy9L+w==
+  ewout@prangsma.net"
+- ssh-rsa AAAAB3NzaC1yc2EAAAABIwAAAQEA6NF8iallvQVp22WDkTkyrtvp9eWW6A8YVr+kz4TjGYe7gHzIw+niNltGEFHzD8+v1I2YJ6oXevct1YeS0o9HZyN1Q9qgCgzUFtdOKLv6IedplqoPkcmF0aYet2PkEDo3MlTBckFXPITAMzF8dJSIFo9D8HfdOV0IAdx4O7PtixWKn5y2hMNG0zQPyUecp4pzC6kivAIhyfHilFR61RGL+GPXQ2MWZWFYbAGjyiYJnAmCP3NOTd0jMZEnDkbUvxhMmBYSdETk1rRgm+R4LOzFUGaHqHDLKLX+FIPKcF96hrucXzcWyLbIbEgE98OHlnVYCzRdK8jlqm8tehUc9c9WhQ==
+{{end}}
