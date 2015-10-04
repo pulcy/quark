@@ -115,6 +115,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 
 	// Create droplet
 	this.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.Image)
+	this.Logger.Debug(cloudConfig)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
 		return maskAny(err)
