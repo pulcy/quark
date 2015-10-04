@@ -46,6 +46,7 @@ coreos:
       content: |
         [Unit]
         After=docker.service
+        Requires=docker.service
         After=flanneld.service
         [Service]
         Type=oneshot
