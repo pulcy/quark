@@ -3,8 +3,6 @@ package digitalocean
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 	"sync"
 	"time"
@@ -21,7 +19,7 @@ const (
 )
 
 func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
-	discoveryUrl, err := newDiscoveryUrl()
+	discoveryUrl, err := providers.NewDiscoveryUrl()
 	if err != nil {
 		return maskAny(err)
 	}
@@ -79,15 +77,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
 
-	opts := struct {
-		DiscoveryUrl         string
-		Region               string
-		PrivateIPv4          string
-		YardPassphrase       string
-		StunnelPemPassphrase string
-		YardImage            string
-		FlannelNetworkCidr   string
-	}{
+	opts := providers.CloudConfigOptions{
 		DiscoveryUrl:         options.DiscoveryUrl,
 		Region:               options.Region,
 		PrivateIPv4:          "$private_ipv4",
@@ -176,17 +166,4 @@ func findKeyId(key string, listedKeys []godo.Key) *godo.Key {
 		}
 	}
 	return nil
-}
-
-func newDiscoveryUrl() (string, error) {
-	resp, err := http.Get("https://discovery.etcd.io/new")
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil
-	}
-	return strings.TrimSpace(string(body)), nil
 }

@@ -11,6 +11,7 @@ import (
 	"arvika.pulcy.com/pulcy/droplets/providers"
 	"arvika.pulcy.com/pulcy/droplets/providers/cloudflare"
 	"arvika.pulcy.com/pulcy/droplets/providers/digitalocean"
+	"arvika.pulcy.com/pulcy/droplets/providers/vagrant"
 )
 
 var (
@@ -26,18 +27,26 @@ var (
 		PersistentPreRun: loadDefaults,
 	}
 
+	provider          string
 	digitalOceanToken string
 	cloudflareApiKey  string
 	cloudflareEmail   string
+	vagrantFolder     string
 
 	log = logging.MustGetLogger(cmdMain.Use)
 )
 
 func init() {
+	dir, err := os.Getwd()
+	if err != nil {
+		Exitf("Cannot get current directory: %#v\n", err)
+	}
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
+	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "digitalocean", "Provider used for creating clusters [digitalocean|vagrant]")
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
+	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", dir, "Directory containing vagrant files")
 }
 
 func main() {
@@ -61,10 +70,21 @@ func loadDefaults(cmd *cobra.Command, args []string) {
 }
 
 func newProvider() providers.CloudProvider {
-	if digitalOceanToken == "" {
-		Exitf("Please specify a token\n")
+	switch provider {
+	case "digitalocean":
+		if digitalOceanToken == "" {
+			Exitf("Please specify a token\n")
+		}
+		return digitalocean.NewProvider(log, digitalOceanToken)
+	case "vagrant":
+		if vagrantFolder == "" {
+			Exitf("Please specify a vagrant-folder\n")
+		}
+		return vagrant.NewProvider(log, vagrantFolder)
+	default:
+		Exitf("Unknown provider '%s'\n", provider)
+		return nil
 	}
-	return digitalocean.NewProvider(log, digitalOceanToken)
 }
 
 func newDnsProvider() providers.DnsProvider {

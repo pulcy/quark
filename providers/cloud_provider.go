@@ -2,6 +2,8 @@ package providers
 
 import (
 	"errors"
+	"io/ioutil"
+	"net/http"
 	"strings"
 )
 
@@ -69,6 +71,16 @@ type CreateInstanceOptions struct {
 	YardImage            string   // Docker image containing encrypted yard
 	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
 	FlannelNetworkCidr   string   // CIDR used by flannel to configure the docker network bridge
+}
+
+type CloudConfigOptions struct {
+	DiscoveryUrl         string
+	Region               string
+	PrivateIPv4          string
+	YardPassphrase       string
+	StunnelPemPassphrase string
+	YardImage            string
+	FlannelNetworkCidr   string
 }
 
 func (this *CreateClusterOptions) Validate() error {
@@ -143,4 +155,17 @@ func (this *CreateInstanceOptions) Validate() error {
 		return errors.New("Please specific a flannel-network-cidr")
 	}
 	return nil
+}
+
+func NewDiscoveryUrl() (string, error) {
+	resp, err := http.Get("https://discovery.etcd.io/new")
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil
+	}
+	return strings.TrimSpace(string(body)), nil
 }
