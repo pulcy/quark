@@ -44,6 +44,7 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 				YardPassphrase:       options.YardPassphrase,
 				StunnelPemPassphrase: options.StunnelPemPassphrase,
 				FlannelNetworkCidr:   options.FlannelNetworkCidr,
+				RebootStrategy:       options.RebootStrategy,
 			}
 			err := this.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
@@ -85,6 +86,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		StunnelPemPassphrase: options.StunnelPemPassphrase,
 		YardImage:            options.YardImage,
 		FlannelNetworkCidr:   options.FlannelNetworkCidr,
+		RebootStrategy:       options.RebootStrategy,
 	}
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {

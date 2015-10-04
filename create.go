@@ -15,6 +15,7 @@ const (
 	defaultYardImage          = "ewoutp/igy:0.1.0"
 	sshKey                    = "ewout@prangsma.net"
 	defaultFlannelNetworkCidr = "10.35.0.0/16"
+	defaultRebootStrategy     = "etcd-lock"
 )
 
 var (
@@ -41,6 +42,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("YARD_PASSPHRASE", ""), "Passphrase used to decrypt yard.gpg")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.StunnelPemPassphrase, "stunnel-pem-passphrase", def("STUNNEL_PEM_PASSPHRASE", ""), "Passphrase used to decrypt stunnel.pem.gpg")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.FlannelNetworkCidr, "flannel-network-cidr", def("FLANNEL_NETWORK_CIDR", defaultFlannelNetworkCidr), "CIDR used by flannel to configure the docker network bridge")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreate.AddCommand(cmdCreateCluster)
 	cmdMain.AddCommand(cmdCreate)
 }

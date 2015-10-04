@@ -56,6 +56,7 @@ type CreateClusterOptions struct {
 	YardImage            string   // Docker image containing encrypted yard
 	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
 	FlannelNetworkCidr   string   // CIDR used by flannel to configure the docker network bridge
+	RebootStrategy       string
 }
 
 type CreateInstanceOptions struct {
@@ -71,6 +72,7 @@ type CreateInstanceOptions struct {
 	YardImage            string   // Docker image containing encrypted yard
 	StunnelPemPassphrase string   // Passphrase for decrypting stunnel.pem
 	FlannelNetworkCidr   string   // CIDR used by flannel to configure the docker network bridge
+	RebootStrategy       string
 }
 
 type CloudConfigOptions struct {
@@ -82,6 +84,7 @@ type CloudConfigOptions struct {
 	YardImage            string
 	FlannelNetworkCidr   string
 	IncludeSshKeys       bool
+	RebootStrategy       string
 }
 
 func (this *CreateClusterOptions) Validate() error {

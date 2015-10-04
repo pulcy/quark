@@ -93,6 +93,7 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 		YardImage:            options.YardImage,
 		FlannelNetworkCidr:   options.FlannelNetworkCidr,
 		IncludeSshKeys:       true,
+		RebootStrategy:       options.RebootStrategy,
 	}
 	content, err = templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
