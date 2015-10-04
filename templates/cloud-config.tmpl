@@ -21,24 +21,30 @@ coreos:
       command: start
     - name: fleet.service
       command: start
+    - name: flanneld.service
+      drop-ins:
+        - name: 50-network-config.conf
+          content: |
+            [Service]
+            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": {{quote .FlannelNetworkCidr}} }'
+      command: start
     - name: yard.service
       command: start
       enable: true
       content: |
         [Unit]
         After=docker.service
+        After=flanneld.service
         [Service]
         Type=oneshot
         Environment=YARD_PASSPHRASE={{.YardPassphrase}}
         Environment=STUNNEL_PEM_PASSPHRASE={{.StunnelPemPassphrase}}
-        Environment=WEAVE_PASSWORD={{.WeavePassword}}
         ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
         ExecStartPre=-/bin/sh -c 'rm -f /home/core/bin/yard'
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
         ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
         ExecStart=/home/core/bin/yard setup \
-        --stunnel-pem-passphrase=${STUNNEL_PEM_PASSPHRASE} \
-        --weave-password=${WEAVE_PASSWORD} 
+        --stunnel-pem-passphrase=${STUNNEL_PEM_PASSPHRASE}
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target

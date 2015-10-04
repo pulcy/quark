@@ -19,7 +19,7 @@ var (
 )
 
 func init() {
-	cmdInstances.Flags().StringVar(&instancesFlags.Domain, "domain", defaultDomain, "Cluster domain")
+	cmdInstances.Flags().StringVar(&instancesFlags.Domain, "domain", def("DROPLETS_DOMAIN", defaultDomain), "Cluster domain")
 	cmdInstances.Flags().StringVar(&instancesFlags.Name, "name", "", "Cluster name")
 	cmdMain.AddCommand(cmdInstances)
 }

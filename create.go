@@ -1,20 +1,20 @@
 package main
 
 import (
-	"github.com/dchest/uniuri"
 	"github.com/spf13/cobra"
 
 	"arvika.pulcy.com/pulcy/droplets/providers"
 )
 
 const (
-	defaultDomain        = "pulcy.com"
-	defaultClusterImage  = "coreos-stable"
-	defaultClusterRegion = "ams3"
-	defaultClusterSize   = "512mb"
-	defaultInstanceCount = 3
-	defaultYardImage     = "ewoutp/igy:0.0.4"
-	sshKey               = "ewout@prangsma.net"
+	defaultDomain             = "pulcy.com"
+	defaultClusterImage       = "coreos-stable"
+	defaultClusterRegion      = "ams3"
+	defaultClusterSize        = "512mb"
+	defaultInstanceCount      = 3
+	defaultYardImage          = "ewoutp/igy:0.1.0"
+	sshKey                    = "ewout@prangsma.net"
+	defaultFlannelNetworkCidr = "10.35.0.0/16"
 )
 
 var (
@@ -31,7 +31,7 @@ var (
 )
 
 func init() {
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", defaultDomain, "Cluster domain")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", defaultDomain), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Image, "image", defaultClusterImage, "OS image to run on new droplets")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the droplets in")
@@ -40,7 +40,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("YARD_PASSPHRASE", ""), "Passphrase used to decrypt yard.gpg")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.StunnelPemPassphrase, "stunnel-pem-passphrase", def("STUNNEL_PEM_PASSPHRASE", ""), "Passphrase used to decrypt stunnel.pem.gpg")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.WeavePassword, "weave-password", def("WEAVE_PASSWORD", newWeavePassword()), "Password used to encrypt weave inter-host traffic")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.FlannelNetworkCidr, "flannel-network-cidr", def("FLANNEL_NETWORK_CIDR", defaultFlannelNetworkCidr), "CIDR used by flannel to configure the docker network bridge")
 	cmdCreate.AddCommand(cmdCreateCluster)
 	cmdMain.AddCommand(cmdCreate)
 }
@@ -70,8 +70,4 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	Infof("Cluster created\n")
-}
-
-func newWeavePassword() string {
-	return uniuri.NewLen(uniuri.UUIDLen)
 }
