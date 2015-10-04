@@ -22,7 +22,7 @@ var (
 )
 
 func init() {
-	cmdDeleteCluster.Flags().StringVar(&deleteClusterFlags.Domain, "domain", defaultDomain, "Cluster domain")
+	cmdDeleteCluster.Flags().StringVar(&deleteClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", defaultDomain), "Cluster domain")
 	cmdDeleteCluster.Flags().StringVar(&deleteClusterFlags.Name, "name", "", "Cluster name")
 	cmdDelete.AddCommand(cmdDeleteCluster)
 	cmdMain.AddCommand(cmdDelete)

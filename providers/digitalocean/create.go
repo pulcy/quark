@@ -45,7 +45,7 @@ func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, d
 				YardImage:            options.YardImage,
 				YardPassphrase:       options.YardPassphrase,
 				StunnelPemPassphrase: options.StunnelPemPassphrase,
-				WeavePassword:        options.WeavePassword,
+				FlannelNetworkCidr:   options.FlannelNetworkCidr,
 			}
 			err := this.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
@@ -86,7 +86,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		YardPassphrase       string
 		StunnelPemPassphrase string
 		YardImage            string
-		WeavePassword        string
+		FlannelNetworkCidr   string
 	}{
 		DiscoveryUrl:         options.DiscoveryUrl,
 		Region:               options.Region,
@@ -94,7 +94,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 		YardPassphrase:       options.YardPassphrase,
 		StunnelPemPassphrase: options.StunnelPemPassphrase,
 		YardImage:            options.YardImage,
-		WeavePassword:        options.WeavePassword,
+		FlannelNetworkCidr:   options.FlannelNetworkCidr,
 	}
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
@@ -115,6 +115,7 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 
 	// Create droplet
 	this.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.Image)
+	this.Logger.Debug(cloudConfig)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
 		return maskAny(err)
