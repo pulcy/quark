@@ -35,6 +35,7 @@ type vultrProvider struct {
 	client *lib.Client
 }
 
+// NewProvider creates a new Vultr provider implementation
 func NewProvider(logger *logging.Logger, apiKey string) providers.CloudProvider {
 	client := lib.NewClient(apiKey, nil)
 	return &vultrProvider{
@@ -43,7 +44,7 @@ func NewProvider(logger *logging.Logger, apiKey string) providers.CloudProvider 
 	}
 }
 
-func (vp *vultrProvider) CreateAnsibleHosts(domain string, sshPort int, developersJson string) error {
+func (vp *vultrProvider) CreateAnsibleHosts(domain string, sshPort int, developersJSON string) error {
 	return maskAny(NotImplementedError)
 }
 
@@ -221,7 +222,7 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 
 // Create an entire cluster
 func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
-	discoveryUrl, err := providers.NewDiscoveryUrl(options.InstanceCount)
+	discoveryURL, err := providers.NewDiscoveryUrl(options.InstanceCount)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -240,7 +241,7 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 				Region:               options.Region,
 				Image:                options.Image,
 				Size:                 options.Size,
-				DiscoveryUrl:         discoveryUrl,
+				DiscoveryUrl:         discoveryURL,
 				SSHKeyNames:          options.SSHKeyNames,
 				YardImage:            options.YardImage,
 				YardPassphrase:       options.YardPassphrase,
