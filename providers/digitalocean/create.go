@@ -19,7 +19,7 @@ const (
 )
 
 func (this *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
-	discoveryUrl, err := providers.NewDiscoveryUrl()
+	discoveryUrl, err := providers.NewDiscoveryUrl(options.InstanceCount)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -122,23 +122,8 @@ func (this *doProvider) CreateInstance(options *providers.CreateInstanceOptions,
 
 	publicIpv4 := getIpv4(*droplet, "public")
 	publicIpv6 := getIpv6(*droplet, "public")
-	this.Logger.Info("%s: %s: %s", droplet.Name, publicIpv4, publicIpv6)
-
-	// Create DNS record for the instance
-	this.Logger.Info("Creating DNS records '%s'", createDroplet.Name)
-	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
+	if err := providers.RegisterInstance(this.Logger, dnsProvider, options, createDroplet.Name, publicIpv4, publicIpv6); err != nil {
 		return maskAny(err)
-	}
-	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
-		return maskAny(err)
-	}
-	if publicIpv6 != "" {
-		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
-			return maskAny(err)
-		}
-		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
-			return maskAny(err)
-		}
 	}
 
 	this.Logger.Info("Droplet '%s' is ready", createDroplet.Name)

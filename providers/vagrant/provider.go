@@ -84,7 +84,7 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 	}
 
 	// user-data
-	discoveryUrl, err := providers.NewDiscoveryUrl()
+	discoveryUrl, err := providers.NewDiscoveryUrl(options.InstanceCount)
 	if err != nil {
 		return maskAny(err)
 	}
