@@ -12,6 +12,7 @@ import (
 	"arvika.pulcy.com/pulcy/droplets/providers/cloudflare"
 	"arvika.pulcy.com/pulcy/droplets/providers/digitalocean"
 	"arvika.pulcy.com/pulcy/droplets/providers/vagrant"
+	"arvika.pulcy.com/pulcy/droplets/providers/vultr"
 )
 
 var (
@@ -32,6 +33,7 @@ var (
 	cloudflareApiKey  string
 	cloudflareEmail   string
 	vagrantFolder     string
+	vultrApiKey       string
 
 	log = logging.MustGetLogger(cmdMain.Use)
 )
@@ -47,6 +49,7 @@ func init() {
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
 	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", dir, "Directory containing vagrant files")
+	cmdMain.PersistentFlags().StringVarP(&vultrApiKey, "vultr-apikey", "", "", "Vultr API key")
 }
 
 func main() {
@@ -81,6 +84,11 @@ func newProvider() providers.CloudProvider {
 			Exitf("Please specify a vagrant-folder\n")
 		}
 		return vagrant.NewProvider(log, vagrantFolder)
+	case "vultr":
+		if vultrApiKey == "" {
+			Exitf("Please specify a vultr-apikey\n")
+		}
+		return vultr.NewProvider(log, vultrApiKey)
 	default:
 		Exitf("Unknown provider '%s'\n", provider)
 		return nil

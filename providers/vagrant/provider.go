@@ -37,6 +37,10 @@ func (vp *vagrantProvider) CreateAnsibleHosts(domain string, sshPort int, develo
 	return maskAny(NotImplementedError)
 }
 
+func (vp *vagrantProvider) ShowPlans() error {
+	return maskAny(NotImplementedError)
+}
+
 func (vp *vagrantProvider) ShowRegions() error {
 	return maskAny(NotImplementedError)
 }

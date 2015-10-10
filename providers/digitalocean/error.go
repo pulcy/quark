@@ -5,5 +5,6 @@ import (
 )
 
 var (
-	maskAny = errgo.MaskFunc(errgo.Any)
+	NotImplementedError = errgo.New("not implemented")
+	maskAny             = errgo.MaskFunc(errgo.Any)
 )

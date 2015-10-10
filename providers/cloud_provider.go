@@ -18,6 +18,7 @@ type CloudProvider interface {
 	ShowRegions() error
 	ShowImages() error
 	ShowKeys() error
+	ShowPlans() error
 
 	// Create a machine instance
 	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) error

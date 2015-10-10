@@ -23,25 +23,25 @@ ifndef GOOS
 endif
 ifndef GOARCH
 	GOARCH := $(shell go env GOARCH)
-endif	
+endif
 
 SOURCES := $(shell find $(SRCDIR) -name '*.go')
 TEMPLATES := $(shell find $(SRCDIR) -name '*.tmpl')
 
-.PHONY: all clean deps 
+.PHONY: all clean deps
 
 all: $(BIN)
 
 clean:
 	rm -Rf $(BIN) $(GOBUILDDIR)
 
-deps: 
+deps:
 	@${MAKE} -B -s $(GOBUILDDIR) $(GOBINDATA)
 
 $(GOBINDATA):
 	GOPATH=$(GOPATH) go get github.com/jteeuwen/go-bindata/...
 
-$(GOBUILDDIR): 
+$(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
 	@cd $(GOPATH) && pulcy go get github.com/spf13/pflag
@@ -52,7 +52,8 @@ $(GOBUILDDIR):
 	@cd $(GOPATH) && pulcy go get github.com/dchest/uniuri
 	@cd $(GOPATH) && pulcy go get github.com/juju/errgo
 	@cd $(GOPATH) && pulcy go get github.com/op/go-logging
-	
+	@cd $(GOPATH) && pulcy go get github.com/JamesClonk/vultr/lib
+
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go
 	docker run \
 	    --rm \
