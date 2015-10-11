@@ -16,12 +16,14 @@ var (
 	maskAny = errgo.MaskFunc(errgo.Any)
 )
 
+// DnsProvider holds all functions to be implemented by DNS providers
 type DnsProvider interface {
 	ShowDomainRecords(domain string) error
 	CreateDnsRecord(domain, recordTpe, name, data string) error
 	DeleteDnsRecord(domain, recordType, name, data string) error
 }
 
+// CloudProvider holds all functions to be implemented by cloud providers
 type CloudProvider interface {
 	CreateAnsibleHosts(domain string, sshPort int, developersJson string) error
 	ShowRegions() error
@@ -44,17 +46,21 @@ type CloudProvider interface {
 	ShowDomainRecords(domain string) error
 }
 
+// ClusterInfo describes a cluster
 type ClusterInfo struct {
 	Domain string // Domain postfix (e.g. pulcy.com)
 	Name   string // Name of the cluster
 }
 
+// ClusterInstance describes a single instance
 type ClusterInstance struct {
 	Name        string
 	PrivateIpv4 string
 	PublicIpv4  string
+	PublicIpv6  string
 }
 
+// Options for creating a cluster
 type CreateClusterOptions struct {
 	ClusterInfo
 	Image                string   // Name of the image to install on each instance
@@ -69,6 +75,7 @@ type CreateClusterOptions struct {
 	RebootStrategy       string
 }
 
+// Options for creating an instance
 type CreateInstanceOptions struct {
 	Domain               string   // Name of the domain e.g. "example.com"
 	ClusterName          string   // Full name of the cluster e.g. "dev1.example.com"
@@ -85,6 +92,7 @@ type CreateInstanceOptions struct {
 	RebootStrategy       string
 }
 
+// Options for cloud-config files
 type CloudConfigOptions struct {
 	DiscoveryUrl         string
 	Region               string
@@ -97,6 +105,7 @@ type CloudConfigOptions struct {
 	RebootStrategy       string
 }
 
+// Validate the given options
 func (this *CreateClusterOptions) Validate() error {
 	if this.Domain == "" {
 		return errors.New("Please specific a domain")
@@ -137,6 +146,7 @@ func (this *CreateClusterOptions) Validate() error {
 	return nil
 }
 
+// Validate the given options
 func (this *CreateInstanceOptions) Validate() error {
 	if this.ClusterName == "" {
 		return errors.New("Please specific a cluster-name")
@@ -171,6 +181,7 @@ func (this *CreateInstanceOptions) Validate() error {
 	return nil
 }
 
+// NewDiscoveryUrl creates a new ETCD discovery URL
 func NewDiscoveryUrl(instanceCount int) (string, error) {
 	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", instanceCount))
 	if err != nil {
@@ -184,6 +195,7 @@ func NewDiscoveryUrl(instanceCount int) (string, error) {
 	return strings.TrimSpace(string(body)), nil
 }
 
+// RegisterInstance creates DNS records for an instance
 func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options *CreateInstanceOptions, name string, publicIpv4, publicIpv6 string) error {
 	logger.Info("%s: %s: %s", name, publicIpv4, publicIpv6)
 
@@ -202,6 +214,28 @@ func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options *
 		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {
 			return maskAny(err)
 		}
+	}
+
+	return nil
+}
+
+// UnRegisterInstance removes DNS records for an instance
+func UnRegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, instance ClusterInstance, domain string) error {
+	// Delete DNS instance records
+	if err := dnsProvider.DeleteDnsRecord(domain, "A", instance.Name, ""); err != nil {
+		return maskAny(err)
+	}
+	if err := dnsProvider.DeleteDnsRecord(domain, "AAAA", instance.Name, ""); err != nil {
+		return maskAny(err)
+	}
+
+	// Delete DNS cluster records
+	clusterName := fmt.Sprintf("%s.%s", instance.Name, domain)
+	if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName, instance.PublicIpv4); err != nil {
+		return maskAny(err)
+	}
+	if err := dnsProvider.DeleteDnsRecord(domain, "AAAA", clusterName, instance.PublicIpv6); err != nil {
+		return maskAny(err)
 	}
 
 	return nil
