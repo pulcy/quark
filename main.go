@@ -44,7 +44,7 @@ func init() {
 		Exitf("Cannot get current directory: %#v\n", err)
 	}
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
-	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "digitalocean", "Provider used for creating clusters [digitalocean|vagrant]")
+	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|vagrant|vultr]")
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
@@ -69,6 +69,9 @@ func loadDefaults(cmd *cobra.Command, args []string) {
 	}
 	if cloudflareEmail == "" {
 		cloudflareEmail = os.Getenv("CLOUDFLARE_EMAIL")
+	}
+	if vultrApiKey == "" {
+		vultrApiKey = os.Getenv("VULTR_APIKEY")
 	}
 }
 
