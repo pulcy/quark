@@ -1,0 +1,14 @@
+#!/bin/bash
+
+cat > cloud-config.yaml <<\EOF
+{{.CloudConfig}}
+EOF
+
+source /etc/environment
+
+sed --expression "s,%%private_ipv4%%,${COREOS_PRIVATE_IPV4},g" \
+    --expression "s,%%public_ipv4%%,${COREOS_PUBLIC_IPV4},g" \
+    cloud-config.yaml > cloud-config-local.yaml
+
+sudo coreos-install -d /dev/vda -c cloud-config-local.yaml
+sudo reboot

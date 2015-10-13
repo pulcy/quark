@@ -17,3 +17,7 @@ func NewProvider(logger *logging.Logger, token string) providers.CloudProvider {
 		token:  token,
 	}
 }
+
+func (vp *doProvider) ShowPlans() error {
+	return maskAny(NotImplementedError)
+}

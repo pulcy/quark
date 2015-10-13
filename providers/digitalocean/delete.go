@@ -2,7 +2,6 @@ package digitalocean
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"arvika.pulcy.com/pulcy/droplets/providers"
@@ -20,11 +19,9 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider p
 		}
 
 		// Delete DNS instance records
-		if err := dnsProvider.DeleteDnsRecord(info.Domain, "A", d.Name, ""); err != nil {
-			return err
-		}
-		if err := dnsProvider.DeleteDnsRecord(info.Domain, "AAAA", d.Name, ""); err != nil {
-			return err
+		instance := this.clusterInstance(d)
+		if err := providers.UnRegisterInstance(this.Logger, dnsProvider, instance, info.Domain); err != nil {
+			return maskAny(err)
 		}
 
 		// Delete droplet
@@ -32,15 +29,6 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider p
 		if err != nil {
 			return err
 		}
-	}
-
-	// Delete DNS cluster records
-	clusterName := fmt.Sprintf("%s.%s", info.Name, info.Domain)
-	if err := dnsProvider.DeleteDnsRecord(info.Domain, "A", clusterName, ""); err != nil {
-		return err
-	}
-	if err := dnsProvider.DeleteDnsRecord(info.Domain, "AAAA", clusterName, ""); err != nil {
-		return err
 	}
 
 	return nil

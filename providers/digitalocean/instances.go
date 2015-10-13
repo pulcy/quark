@@ -15,11 +15,7 @@ func (this *doProvider) GetInstances(info *providers.ClusterInfo) ([]providers.C
 	}
 	result := []providers.ClusterInstance{}
 	for _, d := range droplets {
-		info := providers.ClusterInstance{
-			Name:        d.Name,
-			PrivateIpv4: getIpv4(d, "private"),
-			PublicIpv4:  getIpv4(d, "public"),
-		}
+		info := this.clusterInstance(d)
 		result = append(result, info)
 	}
 	return result, nil
@@ -41,6 +37,17 @@ func (this *doProvider) getInstances(info *providers.ClusterInfo) ([]godo.Drople
 	}
 
 	return result, nil
+}
+
+// clusterInstance creates a ClusterInstance record for the given droplet
+func (dp *doProvider) clusterInstance(d godo.Droplet) providers.ClusterInstance {
+	info := providers.ClusterInstance{
+		Name:        d.Name,
+		PrivateIpv4: getIpv4(d, "private"),
+		PublicIpv4:  getIpv4(d, "public"),
+		PublicIpv6:  getIpv6(d, "public"),
+	}
+	return info
 }
 
 func getIpv4(d godo.Droplet, nType string) string {
