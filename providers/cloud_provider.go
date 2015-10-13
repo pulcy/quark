@@ -230,7 +230,8 @@ func UnRegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, instanc
 	}
 
 	// Delete DNS cluster records
-	clusterName := fmt.Sprintf("%s.%s", instance.Name, domain)
+	parts := strings.Split(instance.Name, ".")
+	clusterName := strings.Join(parts[1:], ".")
 	if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName, instance.PublicIpv4); err != nil {
 		return maskAny(err)
 	}

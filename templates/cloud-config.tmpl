@@ -21,25 +21,6 @@ coreos:
       command: start
     - name: fleet.service
       command: start
-    - name: flanneld.service
-      drop-ins:
-        - name: 50-network-config.conf
-          content: |
-            [Service]
-            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": {{quote .FlannelNetworkCidr}} }'
-      command: start
-    - name: docker.service
-      drop-ins:
-        - name: 50-flanneld.conf
-          content: |
-            [Unit]
-            Requires=flanneld.service
-    - name: docker.socket
-      drop-ins:
-        - name: 50-flanneld.conf
-          content: |
-            [Unit]
-            Requires=flanneld.service
     - name: yard.service
       command: start
       enable: true
@@ -47,7 +28,6 @@ coreos:
         [Unit]
         After=docker.service
         Requires=docker.service
-        After=flanneld.service
         [Service]
         Type=oneshot
         Environment=YARD_PASSPHRASE={{.YardPassphrase}}
