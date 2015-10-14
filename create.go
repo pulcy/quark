@@ -12,7 +12,7 @@ const (
 	defaultClusterRegion  = "ams3"
 	defaultClusterSize    = "512mb"
 	defaultInstanceCount  = 3
-	defaultYardImage      = "pulcy/yard:0.4.4"
+	defaultYardImage      = "pulcy/yard:0.4.5"
 	sshKey                = "ewout@prangsma.net"
 	defaultRebootStrategy = "etcd-lock"
 )
