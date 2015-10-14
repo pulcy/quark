@@ -63,15 +63,13 @@ func (vp *vultrProvider) createServer(options *providers.CreateInstanceOptions) 
 	// Create cloud-config
 	// user-data
 	ccOpts := providers.CloudConfigOptions{
-		DiscoveryUrl:         options.DiscoveryUrl,
-		Region:               options.Region,
-		PrivateIPv4:          "$private_ipv4",
-		YardPassphrase:       options.YardPassphrase,
-		StunnelPemPassphrase: options.StunnelPemPassphrase,
-		YardImage:            options.YardImage,
-		FlannelNetworkCidr:   options.FlannelNetworkCidr,
-		IncludeSshKeys:       true,
-		RebootStrategy:       options.RebootStrategy,
+		DiscoveryUrl:   options.DiscoveryUrl,
+		Region:         options.Region,
+		PrivateIPv4:    "$private_ipv4",
+		YardPassphrase: options.YardPassphrase,
+		YardImage:      options.YardImage,
+		IncludeSshKeys: true,
+		RebootStrategy: options.RebootStrategy,
 	}
 	userData, err := templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {
@@ -127,19 +125,17 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 			defer wg.Done()
 			prefix := strings.ToLower(uniuri.NewLen(8))
 			instanceOptions := &providers.CreateInstanceOptions{
-				Domain:               options.Domain,
-				ClusterName:          fmt.Sprintf("%s.%s", options.Name, options.Domain),
-				InstanceName:         fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
-				Region:               options.Region,
-				Image:                options.Image,
-				Size:                 options.Size,
-				DiscoveryUrl:         discoveryURL,
-				SSHKeyNames:          options.SSHKeyNames,
-				YardImage:            options.YardImage,
-				YardPassphrase:       options.YardPassphrase,
-				StunnelPemPassphrase: options.StunnelPemPassphrase,
-				FlannelNetworkCidr:   options.FlannelNetworkCidr,
-				RebootStrategy:       options.RebootStrategy,
+				Domain:         options.Domain,
+				ClusterName:    fmt.Sprintf("%s.%s", options.Name, options.Domain),
+				InstanceName:   fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
+				Region:         options.Region,
+				Image:          options.Image,
+				Size:           options.Size,
+				DiscoveryUrl:   discoveryURL,
+				SSHKeyNames:    options.SSHKeyNames,
+				YardImage:      options.YardImage,
+				YardPassphrase: options.YardPassphrase,
+				RebootStrategy: options.RebootStrategy,
 			}
 			err := vp.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {

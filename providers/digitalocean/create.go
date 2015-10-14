@@ -32,19 +32,17 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 			defer wg.Done()
 			prefix := strings.ToLower(uniuri.NewLen(8))
 			instanceOptions := &providers.CreateInstanceOptions{
-				Domain:               options.Domain,
-				ClusterName:          fmt.Sprintf("%s.%s", options.Name, options.Domain),
-				InstanceName:         fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
-				Region:               options.Region,
-				Image:                options.Image,
-				Size:                 options.Size,
-				DiscoveryUrl:         discoveryURL,
-				SSHKeyNames:          options.SSHKeyNames,
-				YardImage:            options.YardImage,
-				YardPassphrase:       options.YardPassphrase,
-				StunnelPemPassphrase: options.StunnelPemPassphrase,
-				FlannelNetworkCidr:   options.FlannelNetworkCidr,
-				RebootStrategy:       options.RebootStrategy,
+				Domain:         options.Domain,
+				ClusterName:    fmt.Sprintf("%s.%s", options.Name, options.Domain),
+				InstanceName:   fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
+				Region:         options.Region,
+				Image:          options.Image,
+				Size:           options.Size,
+				DiscoveryUrl:   discoveryURL,
+				SSHKeyNames:    options.SSHKeyNames,
+				YardImage:      options.YardImage,
+				YardPassphrase: options.YardPassphrase,
+				RebootStrategy: options.RebootStrategy,
 			}
 			err := dp.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
@@ -79,14 +77,12 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 	}
 
 	opts := providers.CloudConfigOptions{
-		DiscoveryUrl:         options.DiscoveryUrl,
-		Region:               options.Region,
-		PrivateIPv4:          "$private_ipv4",
-		YardPassphrase:       options.YardPassphrase,
-		StunnelPemPassphrase: options.StunnelPemPassphrase,
-		YardImage:            options.YardImage,
-		FlannelNetworkCidr:   options.FlannelNetworkCidr,
-		RebootStrategy:       options.RebootStrategy,
+		DiscoveryUrl:   options.DiscoveryUrl,
+		Region:         options.Region,
+		PrivateIPv4:    "$private_ipv4",
+		YardPassphrase: options.YardPassphrase,
+		YardImage:      options.YardImage,
+		RebootStrategy: options.RebootStrategy,
 	}
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
