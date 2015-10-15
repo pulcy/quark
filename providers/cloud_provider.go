@@ -99,6 +99,7 @@ type CloudConfigOptions struct {
 	FlannelNetworkCidr   string
 	IncludeSshKeys       bool
 	RebootStrategy       string
+	PrivateClusterDevice string
 }
 
 // Validate the given options

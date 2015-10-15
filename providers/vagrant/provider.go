@@ -89,13 +89,14 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 		return maskAny(err)
 	}
 	opts := providers.CloudConfigOptions{
-		DiscoveryUrl:   discoveryUrl,
-		Region:         options.Region,
-		PrivateIPv4:    "$private_ipv4",
-		YardPassphrase: options.YardPassphrase,
-		YardImage:      options.YardImage,
-		IncludeSshKeys: true,
-		RebootStrategy: options.RebootStrategy,
+		DiscoveryUrl:         discoveryUrl,
+		Region:               options.Region,
+		PrivateIPv4:          "$private_ipv4",
+		YardPassphrase:       options.YardPassphrase,
+		YardImage:            options.YardImage,
+		IncludeSshKeys:       true,
+		RebootStrategy:       options.RebootStrategy,
+		PrivateClusterDevice: "eth0",
 	}
 	content, err = templates.Render(cloudConfigTemplate, opts)
 	if err != nil {

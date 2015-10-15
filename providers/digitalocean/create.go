@@ -77,12 +77,13 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 	}
 
 	opts := providers.CloudConfigOptions{
-		DiscoveryUrl:   options.DiscoveryUrl,
-		Region:         options.Region,
-		PrivateIPv4:    "$private_ipv4",
-		YardPassphrase: options.YardPassphrase,
-		YardImage:      options.YardImage,
-		RebootStrategy: options.RebootStrategy,
+		DiscoveryUrl:         options.DiscoveryUrl,
+		Region:               options.Region,
+		PrivateIPv4:          "$private_ipv4",
+		YardPassphrase:       options.YardPassphrase,
+		YardImage:            options.YardImage,
+		RebootStrategy:       options.RebootStrategy,
+		PrivateClusterDevice: "eth1",
 	}
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {

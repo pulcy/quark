@@ -63,13 +63,14 @@ func (vp *vultrProvider) createServer(options *providers.CreateInstanceOptions) 
 	// Create cloud-config
 	// user-data
 	ccOpts := providers.CloudConfigOptions{
-		DiscoveryUrl:   options.DiscoveryUrl,
-		Region:         options.Region,
-		PrivateIPv4:    "$private_ipv4",
-		YardPassphrase: options.YardPassphrase,
-		YardImage:      options.YardImage,
-		IncludeSshKeys: true,
-		RebootStrategy: options.RebootStrategy,
+		DiscoveryUrl:         options.DiscoveryUrl,
+		Region:               options.Region,
+		PrivateIPv4:          "$private_ipv4",
+		YardPassphrase:       options.YardPassphrase,
+		YardImage:            options.YardImage,
+		IncludeSshKeys:       true,
+		RebootStrategy:       options.RebootStrategy,
+		PrivateClusterDevice: "eth1",
 	}
 	userData, err := templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {

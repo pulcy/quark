@@ -38,7 +38,8 @@ coreos:
         ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
         ExecStart=/home/core/bin/yard setup \
         --discovery-url={{.DiscoveryUrl}} \
-        --docker-ip=${COREOS_PRIVATE_IPV4}
+        --docker-ip=${COREOS_PRIVATE_IPV4} \
+        --private-cluster-device={{.PrivateClusterDevice}}
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target
