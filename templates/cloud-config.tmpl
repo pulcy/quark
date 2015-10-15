@@ -33,9 +33,8 @@ coreos:
         EnvironmentFile=/etc/environment
         Environment=YARD_PASSPHRASE={{.YardPassphrase}}
         ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
-        ExecStartPre=-/bin/sh -c 'rm -f /home/core/bin/yard'
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
-        ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
+        ExecStartPre=/bin/sh -c 'test -e /home/core/bin/yard || /usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
         ExecStart=/home/core/bin/yard setup \
         --discovery-url={{.DiscoveryUrl}} \
         --docker-ip=${COREOS_PRIVATE_IPV4} \
