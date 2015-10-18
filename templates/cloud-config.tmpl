@@ -38,7 +38,10 @@ coreos:
         ExecStart=/home/core/bin/yard setup \
         --discovery-url={{.DiscoveryUrl}} \
         --docker-ip=${COREOS_PRIVATE_IPV4} \
-        --private-cluster-device={{.PrivateClusterDevice}}
+        --private-cluster-device={{.PrivateClusterDevice}} \
+        --private-registry-url={{.PrivateRegistryUrl}} \
+        --private-registry-username={{.PrivateRegistryUserName}} \
+        --private-registry-password={{.PrivateRegistryPassword}}
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target

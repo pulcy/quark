@@ -2,12 +2,9 @@ package digitalocean
 
 import (
 	"errors"
-	"fmt"
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/dchest/uniuri"
 	"github.com/digitalocean/godo"
 
 	"arvika.pulcy.com/pulcy/droplets/providers"
@@ -30,21 +27,8 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			prefix := strings.ToLower(uniuri.NewLen(8))
-			instanceOptions := &providers.CreateInstanceOptions{
-				Domain:         options.Domain,
-				ClusterName:    fmt.Sprintf("%s.%s", options.Name, options.Domain),
-				InstanceName:   fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
-				Region:         options.Region,
-				Image:          options.Image,
-				Size:           options.Size,
-				DiscoveryUrl:   discoveryURL,
-				SSHKeyNames:    options.SSHKeyNames,
-				YardImage:      options.YardImage,
-				YardPassphrase: options.YardPassphrase,
-				RebootStrategy: options.RebootStrategy,
-			}
-			err := dp.CreateInstance(instanceOptions, dnsProvider)
+			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
+			err := dp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}
@@ -76,15 +60,10 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
 
-	opts := providers.CloudConfigOptions{
-		DiscoveryUrl:         options.DiscoveryUrl,
-		Region:               options.Region,
-		PrivateIPv4:          "$private_ipv4",
-		YardPassphrase:       options.YardPassphrase,
-		YardImage:            options.YardImage,
-		RebootStrategy:       options.RebootStrategy,
-		PrivateClusterDevice: "eth1",
-	}
+	opts := options.NewCloudConfigOptions()
+	opts.PrivateIPv4 = "$private_ipv4"
+	opts.PrivateClusterDevice = "eth1"
+
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
 		return maskAny(err)

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
@@ -133,7 +134,10 @@ func Infof(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
 }
 
-func def(envKey, defaultValue string) string {
+func def(envKey, flagName, defaultValue string) string {
+	if envKey == "" {
+		envKey = strings.ToUpper(strings.Replace(flagName, "-", "_", -1))
+	}
 	s := os.Getenv(envKey)
 	if s == "" {
 		s = defaultValue

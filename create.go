@@ -7,14 +7,17 @@ import (
 )
 
 const (
-	defaultDomain         = "pulcy.com"
-	defaultClusterImage   = "coreos-stable"
-	defaultClusterRegion  = "ams3"
-	defaultClusterSize    = "512mb"
-	defaultInstanceCount  = 3
-	defaultYardImage      = "pulcy/yard:0.7.3"
-	sshKey                = "ewout@prangsma.net"
-	defaultRebootStrategy = "etcd-lock"
+	defaultDomain                  = "pulcy.com"
+	defaultClusterImage            = "coreos-stable"
+	defaultClusterRegion           = "ams3"
+	defaultClusterSize             = "512mb"
+	defaultInstanceCount           = 3
+	defaultYardImage               = "pulcy/yard:0.8.0"
+	sshKey                         = "ewout@prangsma.net"
+	defaultRebootStrategy          = "etcd-lock"
+	defaultPrivateRegistryUrl      = "https://registry.pulcy.com"
+	defaultPrivateRegistryUserName = "server"
+	defaultPrivateRegistryPassword = ""
 )
 
 var (
@@ -31,15 +34,18 @@ var (
 )
 
 func init() {
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", defaultDomain), "Cluster domain")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", "domain", defaultDomain), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Image, "image", defaultClusterImage, "OS image to run on new droplets")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the droplets in")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Size, "size", defaultClusterSize, "Size of the new droplet")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("YARD_PASSPHRASE", ""), "Passphrase used to decrypt yard.gpg")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("", "yard-passphrase", ""), "Passphrase used to decrypt yard.gpg")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryPassword, "private-registry-password", def("", "private-registry-password", defaultPrivateRegistryPassword), "Password for private registry")
 	cmdCreate.AddCommand(cmdCreateCluster)
 	cmdMain.AddCommand(cmdCreate)
 }

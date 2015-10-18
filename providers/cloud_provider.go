@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/op/go-logging"
-
+	"github.com/dchest/uniuri"
 	"github.com/juju/errgo"
+	"github.com/op/go-logging"
 )
 
 var (
@@ -63,43 +63,88 @@ type ClusterInstance struct {
 // Options for creating a cluster
 type CreateClusterOptions struct {
 	ClusterInfo
-	Image          string   // Name of the image to install on each instance
-	Region         string   // Name of the region to run all instances in
-	Size           string   // Size of each instance
-	SSHKeyNames    []string // List of names of SSH keys to install on each instance
-	InstanceCount  int      // Number of instances to start
-	YardPassphrase string   // Passphrase for decrypting yard
-	YardImage      string   // Docker image containing encrypted yard
-	RebootStrategy string
+	Image                   string   // Name of the image to install on each instance
+	Region                  string   // Name of the region to run all instances in
+	Size                    string   // Size of each instance
+	SSHKeyNames             []string // List of names of SSH keys to install on each instance
+	InstanceCount           int      // Number of instances to start
+	YardPassphrase          string   // Passphrase for decrypting yard
+	YardImage               string   // Docker image containing encrypted yard
+	RebootStrategy          string
+	PrivateRegistryUrl      string // URL of private docker registry
+	PrivateRegistryUserName string // Username of private docker registry
+	PrivateRegistryPassword string // Password of private docker registry
+}
+
+// NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
+// values inherited from the given CreateClusterOptions
+func (o *CreateClusterOptions) NewCreateInstanceOptions(discoveryURL string) CreateInstanceOptions {
+	prefix := strings.ToLower(uniuri.NewLen(8))
+	return CreateInstanceOptions{
+		DiscoveryUrl:            discoveryURL,
+		Domain:                  o.Domain,
+		ClusterName:             fmt.Sprintf("%s.%s", o.Name, o.Domain),
+		InstanceName:            fmt.Sprintf("%s.%s.%s", prefix, o.Name, o.Domain),
+		Image:                   o.Image,
+		Region:                  o.Region,
+		Size:                    o.Size,
+		SSHKeyNames:             o.SSHKeyNames,
+		YardPassphrase:          o.YardPassphrase,
+		YardImage:               o.YardImage,
+		RebootStrategy:          o.RebootStrategy,
+		PrivateRegistryUrl:      o.PrivateRegistryUrl,
+		PrivateRegistryUserName: o.PrivateRegistryUserName,
+		PrivateRegistryPassword: o.PrivateRegistryPassword,
+	}
 }
 
 // Options for creating an instance
 type CreateInstanceOptions struct {
-	Domain         string   // Name of the domain e.g. "example.com"
-	ClusterName    string   // Full name of the cluster e.g. "dev1.example.com"
-	InstanceName   string   // Name of the instance e.g. "abc123.dev1.example.com"
-	Image          string   // Name of the image to install on the instance
-	Region         string   // Name of the region to run the instance in
-	Size           string   // Size of the instance
-	SSHKeyNames    []string // List of names of SSH keys to install
-	DiscoveryUrl   string   // Discovery url for ETCD
-	YardPassphrase string   // Passphrase for decrypting yard
-	YardImage      string   // Docker image containing encrypted yard
-	RebootStrategy string
+	Domain                  string   // Name of the domain e.g. "example.com"
+	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
+	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
+	Image                   string   // Name of the image to install on the instance
+	Region                  string   // Name of the region to run the instance in
+	Size                    string   // Size of the instance
+	SSHKeyNames             []string // List of names of SSH keys to install
+	DiscoveryUrl            string   // Discovery url for ETCD
+	YardPassphrase          string   // Passphrase for decrypting yard
+	YardImage               string   // Docker image containing encrypted yard
+	RebootStrategy          string
+	PrivateRegistryUrl      string // URL of private docker registry
+	PrivateRegistryUserName string // Username of private docker registry
+	PrivateRegistryPassword string // Password of private docker registry
+}
+
+// NewCloudConfigOptions creates a new CloudConfigOptions instances with all
+// values inherited from the given CreateInstanceOptions
+func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
+	return CloudConfigOptions{
+		DiscoveryUrl:            o.DiscoveryUrl,
+		Region:                  o.Region,
+		YardPassphrase:          o.YardPassphrase,
+		YardImage:               o.YardImage,
+		RebootStrategy:          o.RebootStrategy,
+		PrivateRegistryUrl:      o.PrivateRegistryUrl,
+		PrivateRegistryUserName: o.PrivateRegistryUserName,
+		PrivateRegistryPassword: o.PrivateRegistryPassword,
+	}
 }
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
-	DiscoveryUrl         string
-	Region               string
-	PrivateIPv4          string
-	YardPassphrase       string
-	StunnelPemPassphrase string
-	YardImage            string
-	FlannelNetworkCidr   string
-	IncludeSshKeys       bool
-	RebootStrategy       string
-	PrivateClusterDevice string
+	DiscoveryUrl            string
+	Region                  string
+	PrivateIPv4             string
+	YardPassphrase          string
+	YardImage               string
+	FlannelNetworkCidr      string
+	IncludeSshKeys          bool
+	RebootStrategy          string
+	PrivateClusterDevice    string
+	PrivateRegistryUrl      string // URL of private docker registry
+	PrivateRegistryUserName string // Username of private docker registry
+	PrivateRegistryPassword string // Password of private docker registry
 }
 
 // Validate the given options
@@ -133,6 +178,15 @@ func (this *CreateClusterOptions) Validate() error {
 	}
 	if this.YardPassphrase == "" {
 		return errors.New("Please specific a yard-passphrase")
+	}
+	if this.PrivateRegistryUrl == "" {
+		return errors.New("Please specific a private-registry-url")
+	}
+	if this.PrivateRegistryUserName == "" {
+		return errors.New("Please specific a private-registry-username")
+	}
+	if this.PrivateRegistryPassword == "" {
+		return errors.New("Please specific a private-registry-password")
 	}
 	return nil
 }
@@ -188,7 +242,7 @@ func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options *
 	logger.Info("%s: %s: %s", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
-	logger.Info("Creating DNS records '%s'", name)
+	logger.Info("Creating DNS records: '%s', '%s'", options.InstanceName, options.ClusterName)
 	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 		return maskAny(err)
 	}

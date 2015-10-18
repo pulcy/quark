@@ -1,14 +1,11 @@
 package vultr
 
 import (
-	"fmt"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
 	"github.com/JamesClonk/vultr/lib"
-	"github.com/dchest/uniuri"
 
 	"arvika.pulcy.com/pulcy/droplets/providers"
 	"arvika.pulcy.com/pulcy/droplets/templates"
@@ -62,16 +59,10 @@ func (vp *vultrProvider) createServer(options *providers.CreateInstanceOptions) 
 	}
 	// Create cloud-config
 	// user-data
-	ccOpts := providers.CloudConfigOptions{
-		DiscoveryUrl:         options.DiscoveryUrl,
-		Region:               options.Region,
-		PrivateIPv4:          "$private_ipv4",
-		YardPassphrase:       options.YardPassphrase,
-		YardImage:            options.YardImage,
-		IncludeSshKeys:       true,
-		RebootStrategy:       options.RebootStrategy,
-		PrivateClusterDevice: "eth1",
-	}
+	ccOpts := options.NewCloudConfigOptions()
+	ccOpts.PrivateIPv4 = "$private_ipv4"
+	ccOpts.IncludeSshKeys = true
+	ccOpts.PrivateClusterDevice = "eth1"
 	userData, err := templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {
 		return "", maskAny(err)
@@ -124,21 +115,8 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			prefix := strings.ToLower(uniuri.NewLen(8))
-			instanceOptions := &providers.CreateInstanceOptions{
-				Domain:         options.Domain,
-				ClusterName:    fmt.Sprintf("%s.%s", options.Name, options.Domain),
-				InstanceName:   fmt.Sprintf("%s.%s.%s", prefix, options.Name, options.Domain),
-				Region:         options.Region,
-				Image:          options.Image,
-				Size:           options.Size,
-				DiscoveryUrl:   discoveryURL,
-				SSHKeyNames:    options.SSHKeyNames,
-				YardImage:      options.YardImage,
-				YardPassphrase: options.YardPassphrase,
-				RebootStrategy: options.RebootStrategy,
-			}
-			err := vp.CreateInstance(instanceOptions, dnsProvider)
+			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
+			err := vp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}
