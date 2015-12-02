@@ -33,3 +33,30 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider p
 
 	return nil
 }
+
+func (dp *doProvider) DeleteInstance(info *providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
+	fullName := info.String()
+	droplets, err := dp.getInstances(&info.ClusterInfo)
+	if err != nil {
+		return err
+	}
+	client := NewDOClient(dp.token)
+	for _, d := range droplets {
+		if d.Name == fullName {
+			// Delete DNS instance records
+			instance := dp.clusterInstance(d)
+			if err := providers.UnRegisterInstance(dp.Logger, dnsProvider, instance, info.Domain); err != nil {
+				return maskAny(err)
+			}
+
+			// Delete droplet
+			_, err := client.Droplets.Delete(d.ID)
+			if err != nil {
+				return err
+			}
+			return nil
+		}
+	}
+
+	return maskAny(NotFoundError)
+}

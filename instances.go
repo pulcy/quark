@@ -25,6 +25,8 @@ func init() {
 }
 
 func showInstances(cmd *cobra.Command, args []string) {
+	clusterInfoFromArgs(&instancesFlags, args)
+
 	if instancesFlags.Name == "" {
 		Exitf("Please specify a name\n")
 	}

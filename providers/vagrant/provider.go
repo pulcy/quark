@@ -54,8 +54,8 @@ func (vp *vagrantProvider) ShowKeys() error {
 }
 
 // Create a machine instance
-func (vp *vagrantProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) error {
-	return maskAny(NotImplementedError)
+func (vp *vagrantProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+	return providers.ClusterInstance{}, maskAny(NotImplementedError)
 }
 
 // Create an entire cluster
@@ -112,6 +112,10 @@ func (vp *vagrantProvider) GetInstances(info *providers.ClusterInfo) ([]provider
 
 // Remove all instances of a cluster
 func (vp *vagrantProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
+	return maskAny(NotImplementedError)
+}
+
+func (vp *vagrantProvider) DeleteInstance(info *providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
 	return maskAny(NotImplementedError)
 }
 

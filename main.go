@@ -144,3 +144,22 @@ func def(envKey, flagName, defaultValue string) string {
 	}
 	return s
 }
+
+// clusterInfoFromArgs fills the given cluster info from a command line argument
+func clusterInfoFromArgs(info *providers.ClusterInfo, args []string) {
+	if len(args) == 1 && info.Name == "" {
+		parts := strings.SplitN(args[0], ".", 2)
+		info.Name = parts[0]
+		info.Domain = parts[1]
+	}
+}
+
+// clusterInstanceInfoFromArgs fills the given cluster info from a command line argument
+func clusterInstanceInfoFromArgs(info *providers.ClusterInstanceInfo, args []string) {
+	if len(args) == 1 && info.Prefix == "" && info.Name == "" {
+		parts := strings.SplitN(args[0], ".", 3)
+		info.Prefix = parts[0]
+		info.Name = parts[1]
+		info.Domain = parts[2]
+	}
+}

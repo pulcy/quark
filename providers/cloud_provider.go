@@ -32,7 +32,7 @@ type CloudProvider interface {
 	ShowPlans() error
 
 	// Create a machine instance
-	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) error
+	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)
 
 	// Create an entire cluster
 	CreateCluster(options *CreateClusterOptions, dnsProvider DnsProvider) error
@@ -43,6 +43,9 @@ type CloudProvider interface {
 	// Remove all instances of a cluster
 	DeleteCluster(info *ClusterInfo, dnsProvider DnsProvider) error
 
+	// Remove a single instance of a cluster
+	DeleteInstance(info *ClusterInstanceInfo, dnsProvider DnsProvider) error
+
 	ShowDomainRecords(domain string) error
 }
 
@@ -50,6 +53,20 @@ type CloudProvider interface {
 type ClusterInfo struct {
 	Domain string // Domain postfix (e.g. pulcy.com)
 	Name   string // Name of the cluster
+}
+
+func (ci ClusterInfo) String() string {
+	return fmt.Sprintf("%s.%s", ci.Name, ci.Domain)
+}
+
+// ClusterInstanceInfo describes a single instance of a cluster
+type ClusterInstanceInfo struct {
+	ClusterInfo
+	Prefix string // Prefix on the instance name
+}
+
+func (cii ClusterInstanceInfo) String() string {
+	return fmt.Sprintf("%s.%s.%s", cii.Prefix, cii.Name, cii.Domain)
 }
 
 // ClusterInstance describes a single instance
@@ -79,12 +96,9 @@ type CreateClusterOptions struct {
 // NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
 // values inherited from the given CreateClusterOptions
 func (o *CreateClusterOptions) NewCreateInstanceOptions(discoveryURL string) CreateInstanceOptions {
-	prefix := strings.ToLower(uniuri.NewLen(8))
-	return CreateInstanceOptions{
-		DiscoveryUrl:            discoveryURL,
-		Domain:                  o.Domain,
-		ClusterName:             fmt.Sprintf("%s.%s", o.Name, o.Domain),
-		InstanceName:            fmt.Sprintf("%s.%s.%s", prefix, o.Name, o.Domain),
+	io := CreateInstanceOptions{
+		DiscoveryURL:            discoveryURL,
+		ClusterInfo:             o.ClusterInfo,
 		Image:                   o.Image,
 		Region:                  o.Region,
 		Size:                    o.Size,
@@ -96,18 +110,21 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(discoveryURL string) Cre
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 	}
+	io.SetupNames(o.Name, o.Domain)
+	return io
 }
 
-// Options for creating an instance
+// CreateInstanceOptions contains all options for creating an instance
 type CreateInstanceOptions struct {
-	Domain                  string   // Name of the domain e.g. "example.com"
+	ClusterInfo
 	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
 	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
 	Image                   string   // Name of the image to install on the instance
 	Region                  string   // Name of the region to run the instance in
 	Size                    string   // Size of the instance
 	SSHKeyNames             []string // List of names of SSH keys to install
-	DiscoveryUrl            string   // Discovery url for ETCD
+	DiscoveryURL            string   // Discovery url for ETCD2
+	Etcd2InitialCluster     string   // initial-cluster for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster
 	YardPassphrase          string   // Passphrase for decrypting yard
 	YardImage               string   // Docker image containing encrypted yard
 	RebootStrategy          string
@@ -116,12 +133,21 @@ type CreateInstanceOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 }
 
+// SetupNames configured the ClusterName and InstanceName of the given options
+// using the given cluster & domain name
+func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
+	prefix := strings.ToLower(uniuri.NewLen(8))
+	o.ClusterName = fmt.Sprintf("%s.%s", clusterName, domain)
+	o.InstanceName = fmt.Sprintf("%s.%s.%s", prefix, clusterName, domain)
+}
+
 // NewCloudConfigOptions creates a new CloudConfigOptions instances with all
 // values inherited from the given CreateInstanceOptions
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
-	return CloudConfigOptions{
-		DiscoveryUrl:            o.DiscoveryUrl,
-		Region:                  o.Region,
+	cco := CloudConfigOptions{
+		DiscoveryURL:            o.DiscoveryURL,
+		Etcd2InitialCluster:     o.Etcd2InitialCluster,
+		FleetMetadata:           o.fleetMetadata(),
 		YardPassphrase:          o.YardPassphrase,
 		YardImage:               o.YardImage,
 		RebootStrategy:          o.RebootStrategy,
@@ -129,22 +155,34 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 	}
+	if cco.Etcd2InitialCluster != "" {
+		cco.Etcd2InitialClusterState = "existing"
+	}
+	return cco
+}
+
+// fleetMetadata creates a valid fleet metadata string for use in cloud-config
+func (o *CreateInstanceOptions) fleetMetadata() string {
+	list := []string{fmt.Sprintf("region=%s", o.Region)}
+	return strings.Join(list, ",")
 }
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
-	DiscoveryUrl            string
-	Region                  string
-	PrivateIPv4             string
-	YardPassphrase          string
-	YardImage               string
-	FlannelNetworkCidr      string
-	IncludeSshKeys          bool
-	RebootStrategy          string
-	PrivateClusterDevice    string
-	PrivateRegistryUrl      string // URL of private docker registry
-	PrivateRegistryUserName string // Username of private docker registry
-	PrivateRegistryPassword string // Password of private docker registry
+	DiscoveryURL             string
+	Etcd2InitialCluster      string // initial-cluster for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster
+	Etcd2InitialClusterState string // initial-cluster-state for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster-state
+	FleetMetadata            string
+	PrivateIPv4              string
+	YardPassphrase           string
+	YardImage                string
+	FlannelNetworkCidr       string
+	IncludeSshKeys           bool
+	RebootStrategy           string
+	PrivateClusterDevice     string
+	PrivateRegistryUrl       string // URL of private docker registry
+	PrivateRegistryUserName  string // Username of private docker registry
+	PrivateRegistryPassword  string // Password of private docker registry
 }
 
 // Validate the given options
@@ -211,8 +249,8 @@ func (this *CreateInstanceOptions) Validate() error {
 	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
-	if this.DiscoveryUrl == "" {
-		return errors.New("Please specific a discovery URL")
+	if this.DiscoveryURL == "" && this.Etcd2InitialCluster == "" {
+		return errors.New("Please specific a discovery URL or etcd2 initial-cluster")
 	}
 	if this.YardImage == "" {
 		return errors.New("Please specific a yard-image")
@@ -281,5 +319,26 @@ func UnRegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, instanc
 		return maskAny(err)
 	}
 
+	return nil
+}
+
+// UpdateClusterMembers updates /etc/yard-cluster-members on all instances of the cluster
+func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
+	// See if there are already instances for the given cluster
+	instances, err := provider.GetInstances(&info)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	// Update existing members
+	clusterMembers := []string{}
+	for _, i := range instances {
+		clusterMembers = append(clusterMembers, i.PrivateIpv4)
+	}
+	for _, i := range instances {
+		if err := i.UpdateClusterMembers(log, clusterMembers); err != nil {
+			return maskAny(err)
+		}
+	}
 	return nil
 }

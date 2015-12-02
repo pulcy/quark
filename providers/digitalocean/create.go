@@ -28,7 +28,7 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 		go func(i int) {
 			defer wg.Done()
 			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
-			err := dp.CreateInstance(&instanceOptions, dnsProvider)
+			_, err := dp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}
@@ -44,18 +44,18 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 	return nil
 }
 
-func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) error {
+func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	client := NewDOClient(dp.token)
 
 	keys := []godo.DropletCreateSSHKey{}
 	listedKeys, err := KeyList(client)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 	for _, key := range options.SSHKeyNames {
 		k := findKeyID(key, listedKeys)
 		if k == nil {
-			return maskAny(errors.New("Key not found"))
+			return providers.ClusterInstance{}, maskAny(errors.New("Key not found"))
 		}
 		keys = append(keys, godo.DropletCreateSSHKey{ID: k.ID})
 	}
@@ -66,7 +66,7 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	request := &godo.DropletCreateRequest{
@@ -86,25 +86,25 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 	dp.Logger.Debug(cloudConfig)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	// Wait for active
 	dp.Logger.Info("Waiting for droplet '%s'", createDroplet.Name)
 	droplet, err := dp.waitUntilDropletActive(createDroplet.ID)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	publicIpv4 := getIpv4(*droplet, "public")
 	publicIpv6 := getIpv6(*droplet, "public")
 	if err := providers.RegisterInstance(dp.Logger, dnsProvider, options, createDroplet.Name, publicIpv4, publicIpv6); err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	dp.Logger.Info("Droplet '%s' is ready", createDroplet.Name)
 
-	return nil
+	return dp.clusterInstance(*droplet), nil
 }
 
 func (dp *doProvider) waitUntilDropletActive(id int) (*godo.Droplet, error) {

@@ -22,28 +22,28 @@ const (
 )
 
 // Create a machine instance
-func (vp *vultrProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) error {
+func (vp *vultrProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	// Create server
 	id, err := vp.createServer(options)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	// Wait for the server to be active
 	server, err := vp.waitUntilServerActive(id)
 	if err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	publicIpv4 := server.MainIP
 	publicIpv6 := server.MainIPV6
 	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, publicIpv4, publicIpv6); err != nil {
-		return maskAny(err)
+		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	vp.Logger.Info("Server '%s' is ready", server.Name)
 
-	return nil
+	return vp.clusterInstance(server), nil
 }
 
 // Create a single server
@@ -83,7 +83,7 @@ func (vp *vultrProvider) createServer(options *providers.CreateInstanceOptions) 
 		vp.Logger.Debug("CreateServer failed: %#v", err)
 		return "", maskAny(err)
 	}
-	vp.Logger.Info("Server %s %s %s\n", server.ID, server.Name, server.Status)
+	vp.Logger.Info("Created server %s %s\n", server.ID, server.Name)
 
 	return server.ID, nil
 }
@@ -95,7 +95,12 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 			return lib.Server{}, err
 		}
 		if server.Status == "active" {
-			return server, nil
+			// Attempt an SSH connection
+			instance := vp.clusterInstance(server)
+			if _, err := instance.GetMachineID(vp.Logger); err == nil {
+				// Success
+				return server, nil
+			}
 		}
 		// Wait a while
 		time.Sleep(time.Second * 5)
@@ -116,7 +121,7 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 		go func(i int) {
 			defer wg.Done()
 			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
-			err := vp.CreateInstance(&instanceOptions, dnsProvider)
+			_, err := vp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}

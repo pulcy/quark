@@ -3,7 +3,7 @@
 coreos:
   etcd2:
     # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
-    discovery: {{.DiscoveryUrl}}
+    {{if not .Etcd2InitialCluster}}{{if .DiscoveryURL}}discovery: {{.DiscoveryURL}}{{end}}{{end}}
     # multi-region and multi-cloud deployments need to use $public_ipv4
     advertise-client-urls: http://{{.PrivateIPv4}}:2379
     initial-advertise-peer-urls: http://{{.PrivateIPv4}}:2380
@@ -11,9 +11,11 @@ coreos:
     # legacy ports can be omitted if your application doesn't depend on them
     listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
     listen-peer-urls: http://{{.PrivateIPv4}}:2380,http://{{.PrivateIPv4}}:7001
+    {{if .Etcd2InitialCluster}}initial-cluster: {{.Etcd2InitialCluster}}{{end}}
+    {{if .Etcd2InitialClusterState}}initial-cluster-state: {{.Etcd2InitialClusterState}}{{end}}
   fleet:
     public-ip: {{.PrivateIPv4}}   # used for fleetctl ssh command
-    metadata: "region={{.Region}}"
+    metadata: "{{.FleetMetadata}}"
   update:
     reboot-strategy: {{.RebootStrategy}}
   units:
@@ -36,7 +38,7 @@ coreos:
         ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
         ExecStartPre=/bin/sh -c 'test -e /home/core/bin/yard || /usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
         ExecStart=/home/core/bin/yard setup \
-        --discovery-url={{.DiscoveryUrl}} \
+        {{if .DiscoveryURL}}--discovery-url={{.DiscoveryURL}}{{end}} \
         --docker-ip=${COREOS_PRIVATE_IPV4} \
         --private-cluster-device={{.PrivateClusterDevice}} \
         --private-registry-url={{.PrivateRegistryUrl}} \
@@ -45,6 +47,13 @@ coreos:
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target
+
+write_files:
+  - path: "/etc/pulcy/discovery-url"
+    permissions: "0644"
+    owner: "root"
+    content: |
+      {{.DiscoveryURL}}
 
 {{ if .IncludeSshKeys }}
 ssh_authorized_keys:
