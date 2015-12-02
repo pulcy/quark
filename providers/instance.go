@@ -51,28 +51,6 @@ func (i ClusterInstance) GetEtcdDiscoveryURL(log *logging.Logger) (string, error
 	return uuid, maskAny(err)
 }
 
-// RemoveFromEtcd removes this member from ETCD
-func (i ClusterInstance) RemoveFromEtcd(log *logging.Logger) error {
-	machineID, err := i.GetMachineID(log)
-	if err != nil {
-		return maskAny(err)
-	}
-	log.Info("Removing %s from etcd", i.PublicIpv4)
-	// Dirty: Remove the machine from the etcd cluster by running a HTTP DELETE
-	// request from the machine we want to kill
-	cmd := []string{
-		"curl",
-		"--silent",
-		"--location",
-		"--request DELETE",
-		"http://127.0.0.1:7001/v2/admin/machines/" + machineID,
-	}
-	if _, err = i.runRemoteCommand(log, strings.Join(cmd, " "), "", false); err != nil {
-		return maskAny(err)
-	}
-	return nil
-}
-
 // AddEtcdMember calls etcdctl to add a member to ETCD
 func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, privateIP string) error {
 	log.Info("Adding %s(%s) to etcd on %s", name, privateIP, i.PublicIpv4)
@@ -82,6 +60,25 @@ func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, privateIP stri
 		"add",
 		name,
 		fmt.Sprintf("http://%s:2380", privateIP),
+	}
+	if _, err := i.runRemoteCommand(log, strings.Join(cmd, " "), "", false); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// RemoveEtcdMember calls etcdctl to remove a member from ETCD
+func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP string) error {
+	log.Info("Removing %s(%s) from etcd on %s", name, privateIP, i.PublicIpv4)
+	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1'", privateIP), "", false)
+	if err != nil {
+		return maskAny(err)
+	}
+	cmd := []string{
+		"etcdctl",
+		"member",
+		"remove",
+		id,
 	}
 	if _, err := i.runRemoteCommand(log, strings.Join(cmd, " "), "", false); err != nil {
 		return maskAny(err)
