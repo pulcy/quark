@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"arvika.pulcy.com/pulcy/droplets/providers"
@@ -14,7 +12,7 @@ const (
 	defaultClusterRegion           = "ams3"
 	defaultClusterSize             = "512mb"
 	defaultInstanceCount           = 3
-	defaultYardImage               = "pulcy/yard:0.9.0"
+	defaultYardImage               = "pulcy/yard:0.10.5"
 	sshKey                         = "ewout@prangsma.net"
 	defaultRebootStrategy          = "etcd-lock"
 	defaultPrivateRegistryUrl      = "https://registry.pulcy.com"
@@ -97,14 +95,19 @@ func createCluster(cmd *cobra.Command, args []string) {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}
 
+	// Update all members
+	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, provider); err != nil {
+		Exitf("Failed to update cluster members: %v\n", err)
+	}
+
 	Infof("Cluster created\n")
 }
 
 func createInstance(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
 
+	createInstanceFlags.DiscoveryURL = "http://dummy"
 	createInstanceFlags.SSHKeyNames = []string{sshKey}
-	createInstanceFlags.Etcd2InitialCluster = "http://dummy"
 	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 	provider := newProvider()
 
@@ -129,22 +132,10 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 	createInstanceFlags.DiscoveryURL = discoveryURL
 
-	// Find machine ID
-	machineID, err := instances[0].GetMachineID(log)
-	if err != nil {
-		Exitf("Failed to get machine ID: %v\n", err)
-	}
-	createInstanceFlags.Etcd2InitialCluster = fmt.Sprintf("%s=http://%s:2380", machineID, instances[0].PrivateIpv4)
-
 	// Create
 	instance, err := provider.CreateInstance(&createInstanceFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new instance: %v\n", err)
-	}
-
-	// Update existing members
-	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, provider); err != nil {
-		Exitf("Failed to update cluster members: %v\n", err)
 	}
 
 	// Add new instance to ETCD
@@ -154,6 +145,16 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 	if err := instances[0].AddEtcdMember(log, newMachineID, instance.PrivateIpv4); err != nil {
 		Exitf("Failed to add new instance to etcd: %v\n", err)
+	}
+
+	// Update existing members
+	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, provider); err != nil {
+		Exitf("Failed to update cluster members: %v\n", err)
+	}
+
+	// Reconfigure etcd2 to connect to the existing cluster
+	if err := instance.ReconfigureEtcd2(log, discoveryURL); err != nil {
+		Exitf("Failed to reconfigure etcd2: %v\n", err)
 	}
 
 	Infof("Instance created\n")

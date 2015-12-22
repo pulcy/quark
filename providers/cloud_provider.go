@@ -124,7 +124,6 @@ type CreateInstanceOptions struct {
 	Size                    string   // Size of the instance
 	SSHKeyNames             []string // List of names of SSH keys to install
 	DiscoveryURL            string   // Discovery url for ETCD2
-	Etcd2InitialCluster     string   // initial-cluster for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster
 	YardPassphrase          string   // Passphrase for decrypting yard
 	YardImage               string   // Docker image containing encrypted yard
 	RebootStrategy          string
@@ -146,7 +145,6 @@ func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 	cco := CloudConfigOptions{
 		DiscoveryURL:            o.DiscoveryURL,
-		Etcd2InitialCluster:     o.Etcd2InitialCluster,
 		FleetMetadata:           o.fleetMetadata(),
 		YardPassphrase:          o.YardPassphrase,
 		YardImage:               o.YardImage,
@@ -154,9 +152,6 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
-	}
-	if cco.Etcd2InitialCluster != "" {
-		cco.Etcd2InitialClusterState = "existing"
 	}
 	return cco
 }
@@ -169,20 +164,18 @@ func (o *CreateInstanceOptions) fleetMetadata() string {
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
-	DiscoveryURL             string
-	Etcd2InitialCluster      string // initial-cluster for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster
-	Etcd2InitialClusterState string // initial-cluster-state for ETCD2; See https://github.com/coreos/etcd/blob/master/Documentation/configuration.md#-initial-cluster-state
-	FleetMetadata            string
-	PrivateIPv4              string
-	YardPassphrase           string
-	YardImage                string
-	FlannelNetworkCidr       string
-	IncludeSshKeys           bool
-	RebootStrategy           string
-	PrivateClusterDevice     string
-	PrivateRegistryUrl       string // URL of private docker registry
-	PrivateRegistryUserName  string // Username of private docker registry
-	PrivateRegistryPassword  string // Password of private docker registry
+	DiscoveryURL            string
+	FleetMetadata           string
+	PrivateIPv4             string
+	YardPassphrase          string
+	YardImage               string
+	FlannelNetworkCidr      string
+	IncludeSshKeys          bool
+	RebootStrategy          string
+	PrivateClusterDevice    string
+	PrivateRegistryUrl      string // URL of private docker registry
+	PrivateRegistryUserName string // Username of private docker registry
+	PrivateRegistryPassword string // Password of private docker registry
 }
 
 // Validate the given options
@@ -249,8 +242,8 @@ func (this *CreateInstanceOptions) Validate() error {
 	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
-	if this.DiscoveryURL == "" && this.Etcd2InitialCluster == "" {
-		return errors.New("Please specific a discovery URL or etcd2 initial-cluster")
+	if this.DiscoveryURL == "" {
+		return errors.New("Please specific a discovery URL")
 	}
 	if this.YardImage == "" {
 		return errors.New("Please specific a yard-image")
@@ -331,9 +324,13 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, provider CloudP
 	}
 
 	// Update existing members
-	clusterMembers := []string{}
+	clusterMembers := []ClusterMember{}
 	for _, i := range instances {
-		clusterMembers = append(clusterMembers, i.PrivateIpv4)
+		machineID, err := i.GetMachineID(log)
+		if err != nil {
+			return maskAny(err)
+		}
+		clusterMembers = append(clusterMembers, ClusterMember{MachineID: machineID, PrivateIP: i.PrivateIpv4})
 	}
 	for _, i := range instances {
 		if err := i.UpdateClusterMembers(log, clusterMembers); err != nil {

@@ -86,10 +86,18 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP s
 	return nil
 }
 
-// UpdateClusterMembers updates /etc/yard-cluster-members on the given instance
-func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, clusterIPs []string) error {
-	data := strings.Join(clusterIPs, "\n")
-	if _, err := i.runRemoteCommand(log, "sudo tee /etc/yard-cluster-members", data, false); err != nil {
+type ClusterMember struct {
+	MachineID string
+	PrivateIP string
+}
+
+// UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
+func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members []ClusterMember) error {
+	data := ""
+	for _, cm := range members {
+		data = data + fmt.Sprintf("%s=%s\n", cm.MachineID, cm.PrivateIP)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
 		return maskAny(err)
 	}
 	discoveryURL, err := i.GetEtcdDiscoveryURL(log)
@@ -98,6 +106,15 @@ func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, clusterIPs []
 	}
 	log.Info("Updating cluster iptable rules on %s", i.PublicIpv4)
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/yard cluster update --discovery-url %s", discoveryURL), "", false); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// ReconfigureEtcd2 reconfigures the etcd2 service.
+func (i ClusterInstance) ReconfigureEtcd2(log *logging.Logger, discoveryURL string) error {
+	log.Info("Reconfiguring etcd2 on %s", i.PublicIpv4)
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/yard etcd update --discovery-url %s", discoveryURL), "", false); err != nil {
 		return maskAny(err)
 	}
 	return nil
