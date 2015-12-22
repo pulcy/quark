@@ -65,8 +65,14 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 		return maskAny(err)
 	}
 
+	vopts := struct {
+		InstanceCount int
+	}{
+		InstanceCount: options.InstanceCount,
+	}
+
 	// Vagrantfile
-	content, err := templates.Render(vagrantFileTemplate, nil)
+	content, err := templates.Render(vagrantFileTemplate, vopts)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -75,7 +81,7 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 	}
 
 	// config.rb
-	content, err = templates.Render(configTemplate, nil)
+	content, err = templates.Render(configTemplate, vopts)
 	if err != nil {
 		return maskAny(err)
 	}
