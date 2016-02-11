@@ -9,7 +9,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	"arvika.pulcy.com/pulcy/droplets/providers"
+	"github.com/pulcy/droplets/providers"
 )
 
 const (

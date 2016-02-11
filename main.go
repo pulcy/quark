@@ -9,11 +9,11 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 
-	"arvika.pulcy.com/pulcy/droplets/providers"
-	"arvika.pulcy.com/pulcy/droplets/providers/cloudflare"
-	"arvika.pulcy.com/pulcy/droplets/providers/digitalocean"
-	"arvika.pulcy.com/pulcy/droplets/providers/vagrant"
-	"arvika.pulcy.com/pulcy/droplets/providers/vultr"
+	"github.com/pulcy/droplets/providers"
+	"github.com/pulcy/droplets/providers/cloudflare"
+	"github.com/pulcy/droplets/providers/digitalocean"
+	"github.com/pulcy/droplets/providers/vagrant"
+	"github.com/pulcy/droplets/providers/vultr"
 )
 
 var (

@@ -6,7 +6,7 @@ import (
 
 	"github.com/JamesClonk/vultr/lib"
 
-	"arvika.pulcy.com/pulcy/droplets/providers"
+	"github.com/pulcy/droplets/providers"
 )
 
 // Get names of instances of a cluster

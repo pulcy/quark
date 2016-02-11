@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"arvika.pulcy.com/pulcy/droplets/providers"
 	"github.com/digitalocean/godo"
+	"github.com/pulcy/droplets/providers"
 )
 
 func (this *doProvider) GetInstances(info *providers.ClusterInfo) ([]providers.ClusterInstance, error) {

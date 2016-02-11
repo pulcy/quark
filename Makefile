@@ -9,7 +9,7 @@ SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)
 VENDORDIR := $(ROOTDIR)/vendor
 
-ORGPATH := arvika.pulcy.com/pulcy
+ORGPATH := github.com/pulcy
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
 REPONAME := $(PROJECT)
 REPODIR := $(ORGDIR)/$(REPONAME)

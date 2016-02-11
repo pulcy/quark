@@ -6,7 +6,7 @@ import (
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
 
-	"arvika.pulcy.com/pulcy/droplets/providers"
+	"github.com/pulcy/droplets/providers"
 )
 
 var (

@@ -58,9 +58,6 @@ func (this *doProvider) CreateAnsibleHosts(domain string, sshPort int, developer
 		} else if strings.Contains(name, "dev") {
 			groups = append(groups, "devservers")
 		}
-		if strings.Contains(name, "arvika") {
-			groups = append(groups, "registry")
-		}
 		if strings.HasPrefix(name, "ws0.") || strings.HasPrefix(name, "dev0.") || strings.HasPrefix(name, "old.") {
 			groups = append(groups, "loadbalancers")
 		}

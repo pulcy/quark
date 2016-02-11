@@ -1,10 +1,7 @@
 package digitalocean
 
 import (
-	"errors"
-	"strings"
-
-	"arvika.pulcy.com/pulcy/droplets/providers"
+	"github.com/pulcy/droplets/providers"
 )
 
 func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
@@ -14,10 +11,6 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider p
 	}
 	client := NewDOClient(this.token)
 	for _, d := range droplets {
-		if strings.Contains(d.Name, "arvika") {
-			return errors.New("Not allowed to delete arvika")
-		}
-
 		// Delete DNS instance records
 		instance := this.clusterInstance(d)
 		if err := providers.UnRegisterInstance(this.Logger, dnsProvider, instance, info.Domain); err != nil {
