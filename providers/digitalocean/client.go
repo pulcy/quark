@@ -1,16 +1,27 @@
 package digitalocean
 
 import (
-	"code.google.com/p/goauth2/oauth"
 	"github.com/digitalocean/godo"
+	"golang.org/x/oauth2"
 )
 
-func NewDOClient(token string) *godo.Client {
-	t := &oauth.Transport{
-		Token: &oauth.Token{AccessToken: token},
-	}
+type TokenSource struct {
+	AccessToken string
+}
 
-	client := godo.NewClient(t.Client())
+func (t *TokenSource) Token() (*oauth2.Token, error) {
+	token := &oauth2.Token{
+		AccessToken: t.AccessToken,
+	}
+	return token, nil
+}
+
+func NewDOClient(token string) *godo.Client {
+	tokenSource := &TokenSource{
+		AccessToken: token,
+	}
+	oauthClient := oauth2.NewClient(oauth2.NoContext, tokenSource)
+	client := godo.NewClient(oauthClient)
 	return client
 }
 

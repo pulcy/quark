@@ -7,6 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD)
 GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)
+VENDORDIR := $(ROOTDIR)/vendor
 
 ORGPATH := arvika.pulcy.com/pulcy
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
@@ -17,6 +18,7 @@ BIN := $(BINDIR)/$(PROJECT)
 GOBINDATA := $(GOBUILDDIR)/bin/go-bindata
 
 GOPATH := $(GOBUILDDIR)
+GOVERSION := 1.5.3
 
 ifndef GOOS
 	GOOS := $(shell go env GOOS)
@@ -44,26 +46,31 @@ $(GOBINDATA):
 $(GOBUILDDIR):
 	@mkdir -p $(ORGDIR)
 	@rm -f $(REPODIR) && ln -s ../../../.. $(REPODIR)
-	@cd $(GOPATH) && pulcy go get github.com/spf13/pflag
-	@cd $(GOPATH) && pulcy go get github.com/spf13/cobra
-	@cd $(GOPATH) && pulcy go get github.com/digitalocean/godo
-	@cd $(GOPATH) && pulcy go get code.google.com/p/goauth2/oauth
-	@cd $(GOPATH) && pulcy go get github.com/ryanuber/columnize
-	@cd $(GOPATH) && pulcy go get github.com/dchest/uniuri
-	@cd $(GOPATH) && pulcy go get github.com/juju/errgo
-	@cd $(GOPATH) && pulcy go get github.com/op/go-logging
-	@cd $(GOPATH) && pulcy go get github.com/JamesClonk/vultr/lib
+
+update-vendor:
+	@rm -Rf $(VENDORDIR)
+	@pulcy go vendor -V $(VENDORDIR) \
+		github.com/dchest/uniuri \
+		github.com/digitalocean/godo \
+		github.com/JamesClonk/vultr/lib \
+		github.com/juju/errgo \
+		github.com/op/go-logging \
+		github.com/ryanuber/columnize \
+		github.com/spf13/pflag \
+		github.com/spf13/cobra \
+		golang.org/x/oauth2
 
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go
 	docker run \
-	    --rm \
-	    -v $(ROOTDIR):/usr/code \
-	    -e GOPATH=/usr/code/.gobuild \
-	    -e GOOS=$(GOOS) \
-	    -e GOARCH=$(GOARCH) \
-	    -w /usr/code/ \
-	    golang:1.4.2-cross \
-	    go build -a -ldflags "-X main.projectVersion $(VERSION) -X main.projectBuild $(COMMIT)" -o /usr/code/$(PROJECT)
+		--rm \
+		-v $(ROOTDIR):/usr/code \
+		-e GO15VENDOREXPERIMENT=1 \
+		-e GOPATH=/usr/code/.gobuild \
+		-e GOOS=$(GOOS) \
+		-e GOARCH=$(GOARCH) \
+		-w /usr/code/ \
+		golang:$(GOVERSION) \
+		go build -a -ldflags "-X main.projectVersion=$(VERSION) -X main.projectBuild=$(COMMIT)" -o /usr/code/$(PROJECT) $(REPOPATH)
 
 # Special rule, because this file is generated
 templates/templates_bindata.go: $(TEMPLATES) $(GOBINDATA)
