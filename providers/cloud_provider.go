@@ -25,7 +25,6 @@ type DnsProvider interface {
 
 // CloudProvider holds all functions to be implemented by cloud providers
 type CloudProvider interface {
-	CreateAnsibleHosts(domain string, sshPort int, developersJson string) error
 	ShowRegions() error
 	ShowImages() error
 	ShowKeys() error
