@@ -31,11 +31,11 @@ var (
 )
 
 func init() {
-	cmdDestroyCluster.Flags().StringVar(&destroyClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdDestroyCluster.Flags().StringVar(&destroyClusterFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
 	cmdDestroyCluster.Flags().StringVar(&destroyClusterFlags.Name, "name", "", "Cluster name")
 	cmdDestroy.AddCommand(cmdDestroyCluster)
 
-	cmdDestroyInstance.Flags().StringVar(&destroyInstanceFlags.Domain, "domain", def("DROPLETS_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdDestroyInstance.Flags().StringVar(&destroyInstanceFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
 	cmdDestroyInstance.Flags().StringVar(&destroyInstanceFlags.Name, "name", "", "Cluster name")
 	cmdDestroyInstance.Flags().StringVar(&destroyInstanceFlags.Prefix, "prefix", "", "Instance prefix name")
 	cmdDestroy.AddCommand(cmdDestroyInstance)

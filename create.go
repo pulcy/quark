@@ -39,7 +39,7 @@ var (
 )
 
 func init() {
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("DROPLETS_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Image, "image", defaultClusterImage, "OS image to run on new droplets")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the droplets in")
@@ -53,7 +53,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryPassword, "private-registry-password", def("", "private-registry-password", defaultPrivateRegistryPassword), "Password for private registry")
 	cmdCreate.AddCommand(cmdCreateCluster)
 
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", def("DROPLETS_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Name, "name", "", "Cluster name")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Image, "image", defaultClusterImage, "OS image to run on new droplets")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Region, "region", defaultClusterRegion, "Region to create the droplets in")
