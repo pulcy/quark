@@ -9,11 +9,11 @@ import (
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
 
-	"github.com/pulcy/droplets/providers"
-	"github.com/pulcy/droplets/providers/cloudflare"
-	"github.com/pulcy/droplets/providers/digitalocean"
-	"github.com/pulcy/droplets/providers/vagrant"
-	"github.com/pulcy/droplets/providers/vultr"
+	"github.com/pulcy/quark/providers"
+	"github.com/pulcy/quark/providers/cloudflare"
+	"github.com/pulcy/quark/providers/digitalocean"
+	"github.com/pulcy/quark/providers/vagrant"
+	"github.com/pulcy/quark/providers/vultr"
 )
 
 var (
@@ -24,7 +24,7 @@ var (
 
 var (
 	cmdMain = &cobra.Command{
-		Use:              "droplets",
+		Use:              "quark",
 		Run:              showUsage,
 		PersistentPreRun: loadDefaults,
 	}

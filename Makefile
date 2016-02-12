@@ -1,4 +1,4 @@
-PROJECT := droplets
+PROJECT := quark
 SCRIPTDIR := $(shell pwd)
 ROOTDIR := $(shell cd $(SCRIPTDIR) && pwd)
 VERSION:= $(shell cat $(ROOTDIR)/VERSION)

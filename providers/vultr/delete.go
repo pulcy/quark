@@ -1,7 +1,7 @@
 package vultr
 
 import (
-	"github.com/pulcy/droplets/providers"
+	"github.com/pulcy/quark/providers"
 )
 
 // Remove all instances of a cluster

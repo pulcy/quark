@@ -7,8 +7,8 @@ import (
 
 	"github.com/JamesClonk/vultr/lib"
 
-	"github.com/pulcy/droplets/providers"
-	"github.com/pulcy/droplets/templates"
+	"github.com/pulcy/quark/providers"
+	"github.com/pulcy/quark/templates"
 )
 
 const (

@@ -1,7 +1,7 @@
 package digitalocean
 
 import (
-	"github.com/pulcy/droplets/providers"
+	"github.com/pulcy/quark/providers"
 )
 
 func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {

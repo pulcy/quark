@@ -9,7 +9,7 @@ import (
 
 	"github.com/op/go-logging"
 
-	"github.com/pulcy/droplets/providers"
+	"github.com/pulcy/quark/providers"
 )
 
 const (

@@ -4,7 +4,7 @@ import (
 	"github.com/JamesClonk/vultr/lib"
 	"github.com/op/go-logging"
 
-	"github.com/pulcy/droplets/providers"
+	"github.com/pulcy/quark/providers"
 )
 
 type vultrProvider struct {
