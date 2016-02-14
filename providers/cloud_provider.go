@@ -121,6 +121,7 @@ type CreateInstanceOptions struct {
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
 	PrivateRegistryPassword string // Password of private docker registry
+	EtcdProxy               bool   // If set, this instance will be an ETCD proxy
 }
 
 // SetupNames configured the ClusterName and InstanceName of the given options

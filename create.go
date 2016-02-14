@@ -12,7 +12,7 @@ const (
 	defaultClusterRegion           = "ams3"
 	defaultClusterSize             = "512mb"
 	defaultInstanceCount           = 3
-	defaultGluonImage              = "pulcy/gluon:20160214202000"
+	defaultGluonImage              = "pulcy/gluon:20160214210824"
 	sshKey                         = "ewout@prangsma.net"
 	defaultRebootStrategy          = "etcd-lock"
 	defaultPrivateRegistryUrl      = "https://registry.pulcy.com"
@@ -62,6 +62,7 @@ func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryPassword, "private-registry-password", def("", "private-registry-password", defaultPrivateRegistryPassword), "Password for private registry")
+	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.EtcdProxy, "etcd-proxy", false, "If set, the new instance will be an ETCD proxy")
 	cmdCreate.AddCommand(cmdCreateInstance)
 
 	cmdMain.AddCommand(cmdCreate)
@@ -94,7 +95,10 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Update all members
-	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, provider); err != nil {
+	isEtcdProxy := func(i providers.ClusterInstance) bool {
+		return false
+	}
+	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 
@@ -128,17 +132,22 @@ func createInstance(cmd *cobra.Command, args []string) {
 		Exitf("Failed to create new instance: %v\n", err)
 	}
 
-	// Add new instance to ETCD
-	newMachineID, err := instance.GetMachineID(log)
-	if err != nil {
-		Exitf("Failed to get machine ID: %v\n", err)
-	}
-	if err := instances[0].AddEtcdMember(log, newMachineID, instance.PrivateIpv4); err != nil {
-		Exitf("Failed to add new instance to etcd: %v\n", err)
+	// Add new instance to ETCD (if not a proxy)
+	if !createInstanceFlags.EtcdProxy {
+		newMachineID, err := instance.GetMachineID(log)
+		if err != nil {
+			Exitf("Failed to get machine ID: %v\n", err)
+		}
+		if err := instances[0].AddEtcdMember(log, newMachineID, instance.PrivateIpv4); err != nil {
+			Exitf("Failed to add new instance to etcd: %v\n", err)
+		}
 	}
 
 	// Update existing members
-	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, provider); err != nil {
+	isEtcdProxy := func(i providers.ClusterInstance) bool {
+		return createInstanceFlags.EtcdProxy && (i.PrivateIpv4 == instance.PrivateIpv4)
+	}
+	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 

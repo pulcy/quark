@@ -7,7 +7,7 @@ import (
 )
 
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
-func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
+func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, isEtcdProxy func(ClusterInstance) bool, provider CloudProvider) error {
 	// See if there are already instances for the given cluster
 	instances, err := provider.GetInstances(&info)
 	if err != nil {
@@ -15,7 +15,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, provider CloudP
 	}
 
 	// Update existing members
-	clusterMembers, err := loadClusterMembers(log, instances)
+	clusterMembers, err := loadClusterMembers(log, instances, isEtcdProxy)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -40,7 +40,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, provider CloudP
 	return nil
 }
 
-func loadClusterMembers(log *logging.Logger, instances []ClusterInstance) ([]ClusterMember, error) {
+func loadClusterMembers(log *logging.Logger, instances []ClusterInstance, isEtcdProxy func(ClusterInstance) bool) ([]ClusterMember, error) {
 	clusterMemberChannel := make(chan ClusterMember, len(instances))
 	errorChannel := make(chan error, len(instances))
 	wg := sync.WaitGroup{}
@@ -51,8 +51,20 @@ func loadClusterMembers(log *logging.Logger, instances []ClusterInstance) ([]Clu
 			machineID, err := i.GetMachineID(log)
 			if err != nil {
 				errorChannel <- maskAny(err)
-			} else {
-				clusterMemberChannel <- ClusterMember{MachineID: machineID, PrivateIP: i.PrivateIpv4}
+				return
+			}
+			etcdProxy, err := i.IsEtcdProxy(log)
+			if err != nil {
+				errorChannel <- maskAny(err)
+				return
+			}
+			if isEtcdProxy(i) {
+				etcdProxy = true
+			}
+			clusterMemberChannel <- ClusterMember{
+				MachineID: machineID,
+				PrivateIP: i.PrivateIpv4,
+				EtcdProxy: etcdProxy,
 			}
 		}(i)
 	}

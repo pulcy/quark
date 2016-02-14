@@ -42,6 +42,12 @@ func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
 	return id, maskAny(err)
 }
 
+func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
+	log.Info("Fetching etcd proxy status on %s", i.PublicIpv4)
+	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)
+	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
+}
+
 // AddEtcdMember calls etcdctl to add a member to ETCD
 func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, privateIP string) error {
 	log.Info("Adding %s(%s) to etcd on %s", name, privateIP, i.PublicIpv4)
@@ -80,13 +86,18 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP s
 type ClusterMember struct {
 	MachineID string
 	PrivateIP string
+	EtcdProxy bool
 }
 
 // UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
 func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members []ClusterMember) error {
 	data := ""
 	for _, cm := range members {
-		data = data + fmt.Sprintf("%s=%s\n", cm.MachineID, cm.PrivateIP)
+		proxy := ""
+		if cm.EtcdProxy {
+			proxy = " etcd-proxy"
+		}
+		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.PrivateIP, proxy)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
 		return maskAny(err)

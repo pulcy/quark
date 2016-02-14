@@ -91,7 +91,10 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Update existing members
-	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, provider); err != nil {
+	isEtcdProxy := func(i providers.ClusterInstance) bool {
+		return false
+	}
+	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 
