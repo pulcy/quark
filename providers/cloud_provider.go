@@ -3,8 +3,6 @@ package providers
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 
 	"github.com/dchest/uniuri"
@@ -83,8 +81,7 @@ type CreateClusterOptions struct {
 	Size                    string   // Size of each instance
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
 	InstanceCount           int      // Number of instances to start
-	YardPassphrase          string   // Passphrase for decrypting yard
-	YardImage               string   // Docker image containing encrypted yard
+	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
@@ -93,16 +90,14 @@ type CreateClusterOptions struct {
 
 // NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
 // values inherited from the given CreateClusterOptions
-func (o *CreateClusterOptions) NewCreateInstanceOptions(discoveryURL string) CreateInstanceOptions {
+func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions {
 	io := CreateInstanceOptions{
-		DiscoveryURL:            discoveryURL,
 		ClusterInfo:             o.ClusterInfo,
 		Image:                   o.Image,
 		Region:                  o.Region,
 		Size:                    o.Size,
 		SSHKeyNames:             o.SSHKeyNames,
-		YardPassphrase:          o.YardPassphrase,
-		YardImage:               o.YardImage,
+		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
@@ -121,9 +116,7 @@ type CreateInstanceOptions struct {
 	Region                  string   // Name of the region to run the instance in
 	Size                    string   // Size of the instance
 	SSHKeyNames             []string // List of names of SSH keys to install
-	DiscoveryURL            string   // Discovery url for ETCD2
-	YardPassphrase          string   // Passphrase for decrypting yard
-	YardImage               string   // Docker image containing encrypted yard
+	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
@@ -142,10 +135,8 @@ func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
 // values inherited from the given CreateInstanceOptions
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 	cco := CloudConfigOptions{
-		DiscoveryURL:            o.DiscoveryURL,
 		FleetMetadata:           o.fleetMetadata(),
-		YardPassphrase:          o.YardPassphrase,
-		YardImage:               o.YardImage,
+		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
@@ -162,12 +153,9 @@ func (o *CreateInstanceOptions) fleetMetadata() string {
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
-	DiscoveryURL            string
 	FleetMetadata           string
 	PrivateIPv4             string
-	YardPassphrase          string
-	YardImage               string
-	FlannelNetworkCidr      string
+	GluonImage              string
 	IncludeSshKeys          bool
 	RebootStrategy          string
 	PrivateClusterDevice    string
@@ -202,11 +190,8 @@ func (this *CreateClusterOptions) Validate() error {
 	if this.InstanceCount < 1 {
 		return errors.New("Please specific a valid instance count")
 	}
-	if this.YardImage == "" {
-		return errors.New("Please specific a yard-image")
-	}
-	if this.YardPassphrase == "" {
-		return errors.New("Please specific a yard-passphrase")
+	if this.GluonImage == "" {
+		return errors.New("Please specific a gluon-image")
 	}
 	if this.PrivateRegistryUrl == "" {
 		return errors.New("Please specific a private-registry-url")
@@ -240,28 +225,8 @@ func (this *CreateInstanceOptions) Validate() error {
 	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
-	if this.DiscoveryURL == "" {
-		return errors.New("Please specific a discovery URL")
-	}
-	if this.YardImage == "" {
-		return errors.New("Please specific a yard-image")
-	}
-	if this.YardPassphrase == "" {
-		return errors.New("Please specific a yard-passphrase")
+	if this.GluonImage == "" {
+		return errors.New("Please specific a gluon-image")
 	}
 	return nil
-}
-
-// NewDiscoveryUrl creates a new ETCD discovery URL
-func NewDiscoveryUrl(instanceCount int) (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://discovery.etcd.io/new?size=%d", instanceCount))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return "", nil
-	}
-	return strings.TrimSpace(string(body)), nil
 }

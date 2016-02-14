@@ -109,18 +109,13 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 
 // Create an entire cluster
 func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
-	discoveryURL, err := providers.NewDiscoveryUrl(options.InstanceCount)
-	if err != nil {
-		return maskAny(err)
-	}
-
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
+			instanceOptions := options.NewCreateInstanceOptions()
 			_, err := vp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
@@ -129,7 +124,7 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 	}
 	wg.Wait()
 	close(errors)
-	err = <-errors
+	err := <-errors
 	if err != nil {
 		return maskAny(err)
 	}

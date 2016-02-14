@@ -1,29 +1,10 @@
 #cloud-config
 
 coreos:
-  etcd2:
-    # generate a new token for each unique cluster from https://discovery.etcd.io/new?size=3
-    {{if .DiscoveryURL}}discovery: {{.DiscoveryURL}}{{end}}
-    # multi-region and multi-cloud deployments need to use $public_ipv4
-    advertise-client-urls: http://{{.PrivateIPv4}}:2379
-    initial-advertise-peer-urls: http://{{.PrivateIPv4}}:2380
-    # listen on both the official ports and the legacy ports
-    # legacy ports can be omitted if your application doesn't depend on them
-    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
-    listen-peer-urls: http://{{.PrivateIPv4}}:2380,http://{{.PrivateIPv4}}:7001
-  fleet:
-    public-ip: {{.PrivateIPv4}}   # used for fleetctl ssh command
-    metadata: "{{.FleetMetadata}}"
   update:
     reboot-strategy: {{.RebootStrategy}}
   units:
-    - name: etcd2.service
-      command: start
-    - name: fleet.service
-      command: start
-    - name: yard.service
-      command: start
-      enable: true
+    - name: gluon.service
       content: |
         [Unit]
         After=docker.service
@@ -31,27 +12,21 @@ coreos:
         [Service]
         Type=oneshot
         EnvironmentFile=/etc/environment
-        Environment=YARD_PASSPHRASE={{.YardPassphrase}}
         ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
-        ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.YardImage}}'
-        ExecStartPre=/bin/sh -c 'test -e /home/core/bin/yard || /usr/bin/docker run --rm -v /home/core/bin/:/destination/ -e PASSPHRASE=${YARD_PASSPHRASE} {{.YardImage}}'
-        ExecStart=/home/core/bin/yard setup \
-        {{if .DiscoveryURL}}--discovery-url={{.DiscoveryURL}}{{end}} \
+        ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.GluonImage}}'
+        ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ {{.GluonImage}}'
+        ExecStart=/home/core/bin/gluon setup \
+        --gluon-image={{.GluonImage}} \
         --docker-ip=${COREOS_PRIVATE_IPV4} \
+        --private-ip=${COREOS_PRIVATE_IPV4} \
         --private-cluster-device={{.PrivateClusterDevice}} \
         --private-registry-url={{.PrivateRegistryUrl}} \
         --private-registry-username={{.PrivateRegistryUserName}} \
-        --private-registry-password={{.PrivateRegistryPassword}}
+        --private-registry-password={{.PrivateRegistryPassword}} \
+        --fleet-metadata={{.FleetMetadata}}
         RemainAfterExit=yes
         [Install]
         WantedBy=multi-user.target
-
-write_files:
-  - path: "/etc/pulcy/discovery-url"
-    permissions: "0644"
-    owner: "root"
-    content: |
-      {{.DiscoveryURL}}
 
 {{ if .IncludeSshKeys }}
 ssh_authorized_keys:

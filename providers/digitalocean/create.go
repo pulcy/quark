@@ -16,18 +16,13 @@ const (
 )
 
 func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
-	discoveryURL, err := providers.NewDiscoveryUrl(options.InstanceCount)
-	if err != nil {
-		return maskAny(err)
-	}
-
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions := options.NewCreateInstanceOptions(discoveryURL)
+			instanceOptions := options.NewCreateInstanceOptions()
 			_, err := dp.CreateInstance(&instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
@@ -36,7 +31,7 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 	}
 	wg.Wait()
 	close(errors)
-	err = <-errors
+	err := <-errors
 	if err != nil {
 		return maskAny(err)
 	}

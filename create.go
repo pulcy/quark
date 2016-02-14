@@ -12,7 +12,7 @@ const (
 	defaultClusterRegion           = "ams3"
 	defaultClusterSize             = "512mb"
 	defaultInstanceCount           = 3
-	defaultYardImage               = "pulcy/yard:0.10.5"
+	defaultGluonImage              = "pulcy/gluon:20160214202000"
 	sshKey                         = "ewout@prangsma.net"
 	defaultRebootStrategy          = "etcd-lock"
 	defaultPrivateRegistryUrl      = "https://registry.pulcy.com"
@@ -45,8 +45,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the instances in")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Size, "size", defaultClusterSize, "Size of the new instances")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.YardPassphrase, "yard-passphrase", def("", "yard-passphrase", ""), "Passphrase used to decrypt yard.gpg")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
@@ -58,8 +57,7 @@ func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Image, "image", defaultClusterImage, "OS image to run on new instances")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Region, "region", defaultClusterRegion, "Region to create the instances in")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Size, "size", defaultClusterSize, "Size of the new instances")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.YardImage, "yard-image", defaultYardImage, "Image containing encrypted yard")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.YardPassphrase, "yard-passphrase", def("", "yard-passphrase", ""), "Passphrase used to decrypt yard.gpg")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
@@ -106,7 +104,6 @@ func createCluster(cmd *cobra.Command, args []string) {
 func createInstance(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
 
-	createInstanceFlags.DiscoveryURL = "http://dummy"
 	createInstanceFlags.SSHKeyNames = []string{sshKey}
 	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 	provider := newProvider()
@@ -124,13 +121,6 @@ func createInstance(cmd *cobra.Command, args []string) {
 	if len(instances) == 0 {
 		Exitf("Cluster %s.%s does not exist.\n", createInstanceFlags.Name, createInstanceFlags.Domain)
 	}
-
-	// Find discovery URL
-	discoveryURL, err := instances[0].GetEtcdDiscoveryURL(log)
-	if err != nil {
-		Exitf("Failed to get discovery URL: %v\n", err)
-	}
-	createInstanceFlags.DiscoveryURL = discoveryURL
 
 	// Create
 	instance, err := provider.CreateInstance(&createInstanceFlags, newDnsProvider())
@@ -150,11 +140,6 @@ func createInstance(cmd *cobra.Command, args []string) {
 	// Update existing members
 	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
-	}
-
-	// Reconfigure etcd2 to connect to the existing cluster
-	if err := instance.ReconfigureEtcd2(log, discoveryURL); err != nil {
-		Exitf("Failed to reconfigure etcd2: %v\n", err)
 	}
 
 	Infof("Instance created\n")

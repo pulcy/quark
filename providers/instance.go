@@ -26,7 +26,7 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 
 	if err := cmd.Run(); err != nil {
 		if !quiet {
-			log.Error("SSH failed: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
+			log.Errorf("SSH failed: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
 		}
 		return "", errgo.NoteMask(err, stdErr.String())
 	}
@@ -40,15 +40,6 @@ func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
 	log.Info("Fetching machine-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "cat /etc/machine-id", "", false)
 	return id, maskAny(err)
-}
-
-func (i ClusterInstance) GetEtcdDiscoveryURL(log *logging.Logger) (string, error) {
-	log.Info("Fetching discovery-url on %s", i.PublicIpv4)
-	uuid, err := i.runRemoteCommand(log, "cat /etc/pulcy/discovery-url", "", true)
-	if err != nil {
-		uuid, err = i.runRemoteCommand(log, "systemctl cat etcd2 | grep ETCD_DISCOVERY |grep -oE 'http.*/[a-z0-9A-Z]+'", "", false)
-	}
-	return uuid, maskAny(err)
 }
 
 // AddEtcdMember calls etcdctl to add a member to ETCD
@@ -97,24 +88,14 @@ func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members []Clu
 	for _, cm := range members {
 		data = data + fmt.Sprintf("%s=%s\n", cm.MachineID, cm.PrivateIP)
 	}
+	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
+		return maskAny(err)
+	}
 	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
 		return maskAny(err)
 	}
-	discoveryURL, err := i.GetEtcdDiscoveryURL(log)
-	if err != nil {
-		return maskAny(err)
-	}
-	log.Info("Updating cluster iptable rules on %s", i.PublicIpv4)
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/yard cluster update --discovery-url %s", discoveryURL), "", false); err != nil {
-		return maskAny(err)
-	}
-	return nil
-}
-
-// ReconfigureEtcd2 reconfigures the etcd2 service.
-func (i ClusterInstance) ReconfigureEtcd2(log *logging.Logger, discoveryURL string) error {
-	log.Info("Reconfiguring etcd2 on %s", i.PublicIpv4)
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/yard etcd update --discovery-url %s", discoveryURL), "", false); err != nil {
+	log.Info("Restarting gluon on %s", i.PublicIpv4)
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo systemctl restart gluon.service"), "", false); err != nil {
 		return maskAny(err)
 	}
 	return nil
