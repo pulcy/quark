@@ -12,7 +12,7 @@ var (
 )
 
 func init() {
-	cmdMain.AddCommand(cmdRegions)
+	cmdInstance.AddCommand(cmdRegions)
 }
 
 func showRegions(cmd *cobra.Command, args []string) {

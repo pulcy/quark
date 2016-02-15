@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	cmdInstances = &cobra.Command{
-		Use: "instances",
+	cmdInstanceList = &cobra.Command{
+		Use: "list",
 		Run: showInstances,
 	}
 
@@ -19,9 +19,9 @@ var (
 )
 
 func init() {
-	cmdInstances.Flags().StringVar(&instancesFlags.Domain, "domain", defaultDomain(), "Cluster domain")
-	cmdInstances.Flags().StringVar(&instancesFlags.Name, "name", "", "Cluster name")
-	cmdMain.AddCommand(cmdInstances)
+	cmdInstanceList.Flags().StringVar(&instancesFlags.Domain, "domain", defaultDomain(), "Cluster domain")
+	cmdInstanceList.Flags().StringVar(&instancesFlags.Name, "name", "", "Cluster name")
+	cmdInstance.AddCommand(cmdInstanceList)
 }
 
 func showInstances(cmd *cobra.Command, args []string) {

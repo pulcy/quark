@@ -4,6 +4,14 @@ import (
 	"os"
 )
 
+const (
+	defaultClusterImage   = "coreos-stable"
+	defaultClusterSize    = "512mb"
+	defaultInstanceCount  = 3
+	defaultGluonImage     = "pulcy/gluon:20160214210824"
+	defaultRebootStrategy = "etcd-lock"
+)
+
 func defaultDomain() string {
 	return os.Getenv("QUARK_DOMAIN")
 }

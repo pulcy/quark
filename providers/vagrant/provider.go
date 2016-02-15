@@ -36,7 +36,7 @@ func NewProvider(logger *logging.Logger, folder string) providers.CloudProvider 
 	}
 }
 
-func (vp *vagrantProvider) ShowPlans() error {
+func (vp *vagrantProvider) ShowInstanceTypes() error {
 	return maskAny(NotImplementedError)
 }
 

@@ -12,7 +12,7 @@ var (
 )
 
 func init() {
-	cmdMain.AddCommand(cmdKeys)
+	cmdInstance.AddCommand(cmdKeys)
 }
 
 func showKeys(cmd *cobra.Command, args []string) {

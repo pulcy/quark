@@ -5,12 +5,12 @@ import (
 )
 
 var (
-	cmdDns = &cobra.Command{
-		Use: "dns",
+	cmdInstance = &cobra.Command{
+		Use: "instance",
 		Run: showUsage,
 	}
 )
 
 func init() {
-	cmdMain.AddCommand(cmdDns)
+	cmdMain.AddCommand(cmdInstance)
 }
