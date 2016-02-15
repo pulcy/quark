@@ -98,6 +98,12 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 	if err != nil {
 		return maskAny(err)
 	}
+	// Fetch vagrant insecure private key
+	insecureKey, err := fetchVagrantInsecureSSHKey()
+	if err != nil {
+		return maskAny(err)
+	}
+	sshKeys = append(sshKeys, insecureKey)
 
 	// user-data
 	instanceOptions, err := options.NewCreateInstanceOptions()

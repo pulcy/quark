@@ -54,10 +54,12 @@ update-vendor:
 		github.com/digitalocean/godo \
 		github.com/JamesClonk/vultr/lib \
 		github.com/juju/errgo \
+		github.com/mitchellh/go-homedir \
 		github.com/op/go-logging \
 		github.com/ryanuber/columnize \
 		github.com/spf13/pflag \
 		github.com/spf13/cobra \
+		golang.org/x/crypto/ssh \
 		golang.org/x/oauth2
 
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go
