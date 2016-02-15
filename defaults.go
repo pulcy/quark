@@ -6,7 +6,7 @@ import (
 
 const (
 	defaultInstanceCount  = 3
-	defaultGluonImage     = "pulcy/gluon:20160214210824"
+	defaultGluonImage     = "pulcy/gluon:0.13.0"
 	defaultRebootStrategy = "etcd-lock"
 )
 
