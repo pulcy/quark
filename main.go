@@ -40,16 +40,12 @@ var (
 )
 
 func init() {
-	dir, err := os.Getwd()
-	if err != nil {
-		Exitf("Cannot get current directory: %#v\n", err)
-	}
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
 	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|vagrant|vultr]")
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
-	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", dir, "Directory containing vagrant files")
+	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", defaultVagrantFolder(), "Directory containing vagrant files")
 	cmdMain.PersistentFlags().StringVarP(&vultrApiKey, "vultr-apikey", "", "", "Vultr API key")
 }
 
@@ -111,14 +107,14 @@ func newDnsProvider() providers.DnsProvider {
 
 func confirm(question string) error {
 	for {
-		fmt.Printf("%s ", question)
+		fmt.Printf("%s [yes|no]", question)
 		bufStdin := bufio.NewReader(os.Stdin)
 		line, _, err := bufStdin.ReadLine()
 		if err != nil {
 			return err
 		}
 
-		if string(line) == "yes" {
+		if string(line) == "yes" || string(line) == "y" {
 			return nil
 		}
 		fmt.Println("Please enter 'yes' to confirm.")
@@ -132,17 +128,6 @@ func Exitf(format string, args ...interface{}) {
 
 func Infof(format string, args ...interface{}) {
 	fmt.Printf(format, args...)
-}
-
-func def(envKey, flagName, defaultValue string) string {
-	if envKey == "" {
-		envKey = strings.ToUpper(strings.Replace(flagName, "-", "_", -1))
-	}
-	s := os.Getenv(envKey)
-	if s == "" {
-		s = defaultValue
-	}
-	return s
 }
 
 // clusterInfoFromArgs fills the given cluster info from a command line argument

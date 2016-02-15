@@ -7,17 +7,11 @@ import (
 )
 
 const (
-	defaultDomain                  = "pulcy.com"
-	defaultClusterImage            = "coreos-stable"
-	defaultClusterRegion           = "ams3"
-	defaultClusterSize             = "512mb"
-	defaultInstanceCount           = 3
-	defaultGluonImage              = "pulcy/gluon:20160214210824"
-	sshKey                         = "ewout@prangsma.net"
-	defaultRebootStrategy          = "etcd-lock"
-	defaultPrivateRegistryUrl      = "https://registry.pulcy.com"
-	defaultPrivateRegistryUserName = "server"
-	defaultPrivateRegistryPassword = ""
+	defaultClusterImage   = "coreos-stable"
+	defaultClusterSize    = "512mb"
+	defaultInstanceCount  = 3
+	defaultGluonImage     = "pulcy/gluon:20160214210824"
+	defaultRebootStrategy = "etcd-lock"
 )
 
 var (
@@ -39,29 +33,31 @@ var (
 )
 
 func init() {
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Image, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion, "Region to create the instances in")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion(), "Region to create the instances in")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Size, "size", defaultClusterSize, "Size of the new instances")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryPassword, "private-registry-password", def("", "private-registry-password", defaultPrivateRegistryPassword), "Password for private registry")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl(), "URL of private docker registry")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryUserName, "private-registry-username", defaultPrivateRegistryUserName(), "Username for private registry")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryPassword, "private-registry-password", defaultPrivateRegistryPassword(), "Password for private registry")
+	cmdCreateCluster.Flags().StringSliceVar(&createClusterFlags.SSHKeyNames, "ssh-key", defaultSshKeys(), "Names of SSH keys to add to instances")
 	cmdCreate.AddCommand(cmdCreateCluster)
 
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", def("QUARK_DOMAIN", "domain", defaultDomain), "Cluster domain")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Name, "name", "", "Cluster name")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Image, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Region, "region", defaultClusterRegion, "Region to create the instances in")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Region, "region", defaultClusterRegion(), "Region to create the instances in")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Size, "size", defaultClusterSize, "Size of the new instances")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl, "URL of private docker registry")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUserName, "private-registry-username", def("", "private-registry-username", defaultPrivateRegistryUserName), "Username for private registry")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryPassword, "private-registry-password", def("", "private-registry-password", defaultPrivateRegistryPassword), "Password for private registry")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl(), "URL of private docker registry")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUserName, "private-registry-username", defaultPrivateRegistryUserName(), "Username for private registry")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryPassword, "private-registry-password", defaultPrivateRegistryPassword(), "Password for private registry")
+	cmdCreateInstance.Flags().StringSliceVar(&createInstanceFlags.SSHKeyNames, "ssh-key", defaultSshKeys(), "Names of SSH keys to add to instance")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.EtcdProxy, "etcd-proxy", false, "If set, the new instance will be an ETCD proxy")
 	cmdCreate.AddCommand(cmdCreateInstance)
 
@@ -71,7 +67,6 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
-	createClusterFlags.SSHKeyNames = []string{sshKey}
 	provider := newProvider()
 
 	// Validate
@@ -108,7 +103,6 @@ func createCluster(cmd *cobra.Command, args []string) {
 func createInstance(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
 
-	createInstanceFlags.SSHKeyNames = []string{sshKey}
 	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 	provider := newProvider()
 

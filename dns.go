@@ -14,21 +14,23 @@ var (
 		Run: showDnsRecords,
 	}
 
-	dnsDomain string
+	dnsFlags struct {
+		Domain string
+	}
 )
 
 func init() {
-	cmdDnsRecords.Flags().StringVar(&dnsDomain, "domain", defaultDomain, "Domain name")
+	cmdDnsRecords.Flags().StringVar(&dnsFlags.Domain, "domain", defaultDomain(), "Domain name")
 	cmdDns.AddCommand(cmdDnsRecords)
 	cmdMain.AddCommand(cmdDns)
 }
 
 func showDnsRecords(cmd *cobra.Command, args []string) {
-	if domain == "" {
+	if dnsFlags.Domain == "" {
 		Exitf("Please specify a domain\n")
 	}
 	provider := newDnsProvider()
-	err := provider.ShowDomainRecords(dnsDomain)
+	err := provider.ShowDomainRecords(dnsFlags.Domain)
 	if err != nil {
 		Exitf("Failed to show dns records: %v\n", err)
 	}
