@@ -1,4 +1,10 @@
-# Quark: Cluster & instance creator
+# Quark: Pulcy cluster & instance creator
+
+Quark is used to create new clusters (of machines), add machines to existing clusters or
+remove machines from existing clusters.
+
+The generated clusters are configured such that fleet jobs can be scheduled on them as soon
+as Quark has finished.
 
 ## Show all DNS records
 
