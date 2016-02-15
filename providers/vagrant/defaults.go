@@ -18,7 +18,7 @@ func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOption
 
 func instanceConfigDefaults(ic providers.InstanceConfig) providers.InstanceConfig {
 	if ic.RegionID == "" {
-		ic.RegionID = "n/a"
+		ic.RegionID = "local"
 	}
 	if ic.ImageID == "" {
 		ic.ImageID = "n/a"
