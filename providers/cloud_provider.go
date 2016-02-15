@@ -79,12 +79,20 @@ type ClusterInstance struct {
 	PublicIpv6  string
 }
 
+type InstanceConfig struct {
+	ImageID  string // ID of the image to install on each instance
+	RegionID string // ID of the region to run all instances in
+	TypeID   string // ID of the type of each instance
+}
+
+func (ic InstanceConfig) String() string {
+	return fmt.Sprintf("type: %s, image: %s, region: %s", ic.TypeID, ic.ImageID, ic.RegionID)
+}
+
 // Options for creating a cluster
 type CreateClusterOptions struct {
 	ClusterInfo
-	ImageID                 string   // ID of the image to install on each instance
-	RegionID                string   // ID of the region to run all instances in
-	TypeID                  string   // ID of the type of each instance
+	InstanceConfig
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
 	InstanceCount           int      // Number of instances to start
 	GluonImage              string   // Docker image containing gluon
@@ -99,9 +107,7 @@ type CreateClusterOptions struct {
 func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions {
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
-		ImageID:                 o.ImageID,
-		RegionID:                o.RegionID,
-		TypeID:                  o.TypeID,
+		InstanceConfig:          o.InstanceConfig,
 		SSHKeyNames:             o.SSHKeyNames,
 		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
@@ -116,11 +122,9 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions 
 // CreateInstanceOptions contains all options for creating an instance
 type CreateInstanceOptions struct {
 	ClusterInfo
-	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
-	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
-	ImageID                 string   // ID of the image to install on the instance
-	RegionID                string   // ID of the region to run the instance in
-	TypeID                  string   //ID of the type of the instance
+	ClusterName  string // Full name of the cluster e.g. "dev1.example.com"
+	InstanceName string // Name of the instance e.g. "abc123.dev1.example.com"
+	InstanceConfig
 	SSHKeyNames             []string // List of names of SSH keys to install
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
@@ -172,67 +176,69 @@ type CloudConfigOptions struct {
 }
 
 // Validate the given options
-func (this *CreateClusterOptions) Validate() error {
-	if this.Domain == "" {
-		return errors.New("Please specific a domain")
-	}
-	if this.Name == "" {
-		return errors.New("Please specific a name")
-	}
-	if strings.ContainsAny(this.Name, ".") {
-		return errors.New("Invalid characters in name")
-	}
-	if this.ImageID == "" {
+func (ic InstanceConfig) Validate() error {
+	if ic.ImageID == "" {
 		return errors.New("Please specific an image")
 	}
-	if this.RegionID == "" {
+	if ic.RegionID == "" {
 		return errors.New("Please specific a region")
 	}
-	if this.TypeID == "" {
+	if ic.TypeID == "" {
 		return errors.New("Please specific a type")
 	}
-	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
+	return nil
+}
+
+// Validate the given options
+func (cco CreateClusterOptions) Validate() error {
+	if cco.Domain == "" {
+		return errors.New("Please specific a domain")
+	}
+	if cco.Name == "" {
+		return errors.New("Please specific a name")
+	}
+	if strings.ContainsAny(cco.Name, ".") {
+		return errors.New("Invalid characters in name")
+	}
+	if err := cco.InstanceConfig.Validate(); err != nil {
+		return maskAny(err)
+	}
+	if len(cco.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
-	if this.InstanceCount < 1 {
+	if cco.InstanceCount < 1 {
 		return errors.New("Please specific a valid instance count")
 	}
-	if this.GluonImage == "" {
+	if cco.GluonImage == "" {
 		return errors.New("Please specific a gluon-image")
 	}
-	if this.PrivateRegistryUrl == "" {
+	if cco.PrivateRegistryUrl == "" {
 		return errors.New("Please specific a private-registry-url")
 	}
-	if this.PrivateRegistryUserName == "" {
+	if cco.PrivateRegistryUserName == "" {
 		return errors.New("Please specific a private-registry-username")
 	}
-	if this.PrivateRegistryPassword == "" {
+	if cco.PrivateRegistryPassword == "" {
 		return errors.New("Please specific a private-registry-password")
 	}
 	return nil
 }
 
 // Validate the given options
-func (this *CreateInstanceOptions) Validate() error {
-	if this.ClusterName == "" {
+func (cio CreateInstanceOptions) Validate() error {
+	if cio.ClusterName == "" {
 		return errors.New("Please specific a cluster-name")
 	}
-	if this.InstanceName == "" {
+	if cio.InstanceName == "" {
 		return errors.New("Please specific a instance-name")
 	}
-	if this.ImageID == "" {
-		return errors.New("Please specific an image")
+	if err := cio.InstanceConfig.Validate(); err != nil {
+		return maskAny(err)
 	}
-	if this.RegionID == "" {
-		return errors.New("Please specific a region")
-	}
-	if this.TypeID == "" {
-		return errors.New("Please specific a type")
-	}
-	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
+	if len(cio.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
-	if this.GluonImage == "" {
+	if cio.GluonImage == "" {
 		return errors.New("Please specific a gluon-image")
 	}
 	return nil

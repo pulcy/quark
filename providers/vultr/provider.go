@@ -20,13 +20,3 @@ func NewProvider(logger *logging.Logger, apiKey string) providers.CloudProvider 
 		client: client,
 	}
 }
-
-// Apply defaults for the given options
-func (vp *vultrProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
-	return options
-}
-
-// Apply defaults for the given options
-func (vp *vultrProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
-	return options
-}

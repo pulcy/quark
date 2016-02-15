@@ -18,9 +18,9 @@ var (
 func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Name, "name", "", "Cluster name")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.ImageID, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RegionID, "region", defaultClusterRegion(), "Region to create the instances in")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TypeID, "type", defaultClusterType, "Type of the new instances")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.ImageID, "image", "", "OS image to run on new instances")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RegionID, "region", "", "Region to create the instances in")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TypeID, "type", "", "Type of the new instances")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl(), "URL of private docker registry")
@@ -36,6 +36,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 	provider := newProvider()
+	createInstanceFlags = provider.InstanceDefaults(createInstanceFlags)
 
 	// Validate
 	if err := createInstanceFlags.Validate(); err != nil {

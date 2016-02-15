@@ -2,6 +2,7 @@ package vultr
 
 import (
 	"os"
+	"strconv"
 	"sync"
 	"time"
 
@@ -14,11 +15,6 @@ import (
 const (
 	fileMode            = os.FileMode(0775)
 	cloudConfigTemplate = "templates/cloud-config.tmpl"
-
-	regionAmsterdam = 7
-	coreosStable    = 179
-	plan768MB       = 29
-	plan1GB         = 93
 )
 
 // Create a machine instance
@@ -75,9 +71,18 @@ func (vp *vultrProvider) createServer(options providers.CreateInstanceOptions) (
 		SSHKey:            sshid,
 		UserData:          userData,
 	}
-	regionID := regionAmsterdam
-	planID := plan768MB
-	osID := coreosStable
+	regionID, err := strconv.Atoi(options.RegionID)
+	if err != nil {
+		return "", maskAny(err)
+	}
+	planID, err := strconv.Atoi(options.TypeID)
+	if err != nil {
+		return "", maskAny(err)
+	}
+	osID, err := strconv.Atoi(options.ImageID)
+	if err != nil {
+		return "", maskAny(err)
+	}
 	server, err := vp.client.CreateServer(name, regionID, planID, osID, opts)
 	if err != nil {
 		vp.Logger.Debug("CreateServer failed: %#v", err)

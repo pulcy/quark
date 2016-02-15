@@ -5,8 +5,6 @@ import (
 )
 
 const (
-	defaultClusterImage   = "coreos-stable"
-	defaultClusterType    = "512mb"
 	defaultInstanceCount  = 3
 	defaultGluonImage     = "pulcy/gluon:20160214210824"
 	defaultRebootStrategy = "etcd-lock"
@@ -34,8 +32,4 @@ func defaultSshKeys() []string {
 
 func defaultVagrantFolder() string {
 	return os.Getenv("QUARK_VAGRANT_FOLDER")
-}
-
-func defaultClusterRegion() string {
-	return os.Getenv("QUARK_REGION")
 }

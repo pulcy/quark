@@ -21,13 +21,3 @@ func NewProvider(logger *logging.Logger, token string) providers.CloudProvider {
 func (vp *doProvider) ShowInstanceTypes() error {
 	return maskAny(NotImplementedError)
 }
-
-// Apply defaults for the given options
-func (vp *doProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
-	return options
-}
-
-// Apply defaults for the given options
-func (vp *doProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
-	return options
-}

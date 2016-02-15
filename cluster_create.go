@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"github.com/pulcy/quark/providers"
@@ -18,9 +20,9 @@ var (
 func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ImageID, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RegionID, "region", defaultClusterRegion(), "Region to create the instances in")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TypeID, "type", defaultClusterType, "Type of the new instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ImageID, "image", "", "OS image to run on new instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RegionID, "region", "", "Region to create the instances in")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TypeID, "type", "", "Type of the new instances")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
@@ -35,6 +37,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
 	provider := newProvider()
+	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
 
 	// Validate
 	if err := createClusterFlags.Validate(); err != nil {
@@ -48,6 +51,11 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 	if len(instances) > 0 {
 		Exitf("Cluster %s.%s already exists.\n", createClusterFlags.Name, createClusterFlags.Domain)
+	}
+
+	// Confirm
+	if err := confirm(fmt.Sprintf("Are you sure you want to create a %d instance cluster of %s?", createClusterFlags.InstanceCount, createClusterFlags.InstanceConfig)); err != nil {
+		Exitf("%v\n", err)
 	}
 
 	// Create

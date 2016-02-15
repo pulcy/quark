@@ -159,13 +159,3 @@ func (vp *vagrantProvider) DeleteInstance(info providers.ClusterInstanceInfo, dn
 func (vp *vagrantProvider) ShowDomainRecords(domain string) error {
 	return maskAny(NotImplementedError)
 }
-
-// Apply defaults for the given options
-func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
-	return options
-}
-
-// Apply defaults for the given options
-func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
-	return options
-}
