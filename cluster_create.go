@@ -20,6 +20,7 @@ var (
 )
 
 func init() {
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ID, "cluster-id", "", "Cluster ID (for vault-monkey)")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ImageID, "image", "", "OS image to run on new instances")
@@ -39,7 +40,11 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
-	createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
+	if createClusterFlags.ID == "" {
+		createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
+	} else {
+		createClusterFlags.ID = strings.ToLower(createClusterFlags.ID)
+	}
 	provider := newProvider()
 	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
 
