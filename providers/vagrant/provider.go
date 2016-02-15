@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/op/go-logging"
 
@@ -35,6 +36,14 @@ const (
 	configTemplate      = "templates/config.rb.tmpl"
 	configFileName      = "config.rb"
 	userDataFileName    = "user-data"
+)
+
+var (
+	images = []string{
+		"coreos-alpha",
+		"coreos-beta",
+		"coreos-stable",
+	}
 )
 
 type vagrantProvider struct {
@@ -59,7 +68,8 @@ func (vp *vagrantProvider) ShowRegions() error {
 }
 
 func (vp *vagrantProvider) ShowImages() error {
-	return maskAny(NotImplementedError)
+	fmt.Printf("Images\n%s\n", strings.Join(images, "\n"))
+	return nil
 }
 
 func (vp *vagrantProvider) ShowKeys() error {
@@ -82,10 +92,18 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 		return maskAny(fmt.Errorf("Vagrant in %s already exists", vp.folder))
 	}
 
+	parts := strings.Split(options.ImageID, "-")
+	if len(parts) != 2 || parts[0] != "coreos" {
+		return maskAny(fmt.Errorf("Invalid image ID, expected 'coreos-alpha|beta|stable', got '%s'", options.ImageID))
+	}
+	updateChannel := parts[1]
+
 	vopts := struct {
 		InstanceCount int
+		UpdateChannel string
 	}{
 		InstanceCount: options.InstanceCount,
+		UpdateChannel: updateChannel,
 	}
 	vp.instanceCount = options.InstanceCount
 

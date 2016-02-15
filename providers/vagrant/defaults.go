@@ -38,7 +38,7 @@ func instanceConfigDefaults(ic providers.InstanceConfig) providers.InstanceConfi
 		ic.RegionID = "local"
 	}
 	if ic.ImageID == "" {
-		ic.ImageID = "n/a"
+		ic.ImageID = "coreos-stable"
 	}
 	if ic.TypeID == "" {
 		ic.TypeID = "n/a"
