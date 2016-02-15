@@ -12,6 +12,9 @@ func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOpti
 
 // Apply defaults for the given options
 func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	if options.Name == "" {
+		options.Name = "vagrant"
+	}
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	return options
 }
