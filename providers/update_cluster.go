@@ -9,7 +9,7 @@ import (
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
 func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, isEtcdProxy func(ClusterInstance) bool, provider CloudProvider) error {
 	// See if there are already instances for the given cluster
-	instances, err := provider.GetInstances(&info)
+	instances, err := provider.GetInstances(info)
 	if err != nil {
 		return maskAny(err)
 	}

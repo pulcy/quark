@@ -10,7 +10,7 @@ import (
 )
 
 // Get names of instances of a cluster
-func (vp *vultrProvider) GetInstances(info *providers.ClusterInfo) ([]providers.ClusterInstance, error) {
+func (vp *vultrProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
 	servers, err := vp.getInstances(info)
 	if err != nil {
 		return nil, maskAny(err)
@@ -28,7 +28,7 @@ func (vp *vultrProvider) GetInstances(info *providers.ClusterInfo) ([]providers.
 	return list, nil
 }
 
-func (vp *vultrProvider) getInstances(info *providers.ClusterInfo) ([]lib.Server, error) {
+func (vp *vultrProvider) getInstances(info providers.ClusterInfo) ([]lib.Server, error) {
 	servers, err := vp.client.GetServers()
 	if err != nil {
 		return nil, maskAny(err)

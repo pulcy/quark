@@ -27,20 +27,26 @@ type CloudProvider interface {
 	ShowKeys() error
 	ShowInstanceTypes() error
 
+	// Apply defaults for the given options
+	InstanceDefaults(options CreateInstanceOptions) CreateInstanceOptions
+
+	// Apply defaults for the given options
+	ClusterDefaults(options CreateClusterOptions) CreateClusterOptions
+
 	// Create a machine instance
-	CreateInstance(options *CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)
+	CreateInstance(options CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)
 
 	// Create an entire cluster
-	CreateCluster(options *CreateClusterOptions, dnsProvider DnsProvider) error
+	CreateCluster(options CreateClusterOptions, dnsProvider DnsProvider) error
 
 	// Get names of instances of a cluster
-	GetInstances(info *ClusterInfo) ([]ClusterInstance, error)
+	GetInstances(info ClusterInfo) ([]ClusterInstance, error)
 
 	// Remove all instances of a cluster
-	DeleteCluster(info *ClusterInfo, dnsProvider DnsProvider) error
+	DeleteCluster(info ClusterInfo, dnsProvider DnsProvider) error
 
 	// Remove a single instance of a cluster
-	DeleteInstance(info *ClusterInstanceInfo, dnsProvider DnsProvider) error
+	DeleteInstance(info ClusterInstanceInfo, dnsProvider DnsProvider) error
 
 	ShowDomainRecords(domain string) error
 }
@@ -76,9 +82,9 @@ type ClusterInstance struct {
 // Options for creating a cluster
 type CreateClusterOptions struct {
 	ClusterInfo
-	Image                   string   // Name of the image to install on each instance
-	Region                  string   // Name of the region to run all instances in
-	Size                    string   // Size of each instance
+	ImageID                 string   // ID of the image to install on each instance
+	RegionID                string   // ID of the region to run all instances in
+	TypeID                  string   // ID of the type of each instance
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
 	InstanceCount           int      // Number of instances to start
 	GluonImage              string   // Docker image containing gluon
@@ -93,9 +99,9 @@ type CreateClusterOptions struct {
 func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions {
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
-		Image:                   o.Image,
-		Region:                  o.Region,
-		Size:                    o.Size,
+		ImageID:                 o.ImageID,
+		RegionID:                o.RegionID,
+		TypeID:                  o.TypeID,
 		SSHKeyNames:             o.SSHKeyNames,
 		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
@@ -112,9 +118,9 @@ type CreateInstanceOptions struct {
 	ClusterInfo
 	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
 	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
-	Image                   string   // Name of the image to install on the instance
-	Region                  string   // Name of the region to run the instance in
-	Size                    string   // Size of the instance
+	ImageID                 string   // ID of the image to install on the instance
+	RegionID                string   // ID of the region to run the instance in
+	TypeID                  string   //ID of the type of the instance
 	SSHKeyNames             []string // List of names of SSH keys to install
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
@@ -148,7 +154,7 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 
 // fleetMetadata creates a valid fleet metadata string for use in cloud-config
 func (o *CreateInstanceOptions) fleetMetadata() string {
-	list := []string{fmt.Sprintf("region=%s", o.Region)}
+	list := []string{fmt.Sprintf("region=%s", o.RegionID)}
 	return strings.Join(list, ",")
 }
 
@@ -176,14 +182,14 @@ func (this *CreateClusterOptions) Validate() error {
 	if strings.ContainsAny(this.Name, ".") {
 		return errors.New("Invalid characters in name")
 	}
-	if this.Image == "" {
+	if this.ImageID == "" {
 		return errors.New("Please specific an image")
 	}
-	if this.Region == "" {
+	if this.RegionID == "" {
 		return errors.New("Please specific a region")
 	}
-	if this.Size == "" {
-		return errors.New("Please specific a size")
+	if this.TypeID == "" {
+		return errors.New("Please specific a type")
 	}
 	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
@@ -214,14 +220,14 @@ func (this *CreateInstanceOptions) Validate() error {
 	if this.InstanceName == "" {
 		return errors.New("Please specific a instance-name")
 	}
-	if this.Image == "" {
+	if this.ImageID == "" {
 		return errors.New("Please specific an image")
 	}
-	if this.Region == "" {
+	if this.RegionID == "" {
 		return errors.New("Please specific a region")
 	}
-	if this.Size == "" {
-		return errors.New("Please specific a size")
+	if this.TypeID == "" {
+		return errors.New("Please specific a type")
 	}
 	if this.SSHKeyNames == nil || len(this.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")

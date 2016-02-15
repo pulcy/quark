@@ -53,12 +53,12 @@ func (vp *vagrantProvider) ShowKeys() error {
 }
 
 // Create a machine instance
-func (vp *vagrantProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (vp *vagrantProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	return providers.ClusterInstance{}, maskAny(NotImplementedError)
 }
 
 // Create an entire cluster
-func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	// Ensure folder exists
 	if err := os.MkdirAll(vp.folder, fileMode|os.ModeDir); err != nil {
 		return maskAny(err)
@@ -122,7 +122,7 @@ func (vp *vagrantProvider) CreateCluster(options *providers.CreateClusterOptions
 }
 
 // Get names of instances of a cluster
-func (vp *vagrantProvider) GetInstances(info *providers.ClusterInfo) ([]providers.ClusterInstance, error) {
+func (vp *vagrantProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
 	instances := []providers.ClusterInstance{}
 	for i := 1; i <= vp.instanceCount; i++ {
 		instances = append(instances, providers.ClusterInstance{
@@ -136,7 +136,7 @@ func (vp *vagrantProvider) GetInstances(info *providers.ClusterInfo) ([]provider
 }
 
 // Remove all instances of a cluster
-func (vp *vagrantProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
+func (vp *vagrantProvider) DeleteCluster(info providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
 	// Start
 	cmd := exec.Command("vagrant", "destroy", "-f")
 	cmd.Dir = vp.folder
@@ -152,10 +152,20 @@ func (vp *vagrantProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvide
 	return nil
 }
 
-func (vp *vagrantProvider) DeleteInstance(info *providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
+func (vp *vagrantProvider) DeleteInstance(info providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
 	return maskAny(NotImplementedError)
 }
 
 func (vp *vagrantProvider) ShowDomainRecords(domain string) error {
 	return maskAny(NotImplementedError)
+}
+
+// Apply defaults for the given options
+func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+	return options
+}
+
+// Apply defaults for the given options
+func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	return options
 }

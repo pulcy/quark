@@ -6,7 +6,7 @@ import (
 
 const (
 	defaultClusterImage   = "coreos-stable"
-	defaultClusterSize    = "512mb"
+	defaultClusterType    = "512mb"
 	defaultInstanceCount  = 3
 	defaultGluonImage     = "pulcy/gluon:20160214210824"
 	defaultRebootStrategy = "etcd-lock"

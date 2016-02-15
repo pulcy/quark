@@ -31,7 +31,7 @@ func showInstances(cmd *cobra.Command, args []string) {
 		Exitf("Please specify a name\n")
 	}
 	provider := newProvider()
-	instances, err := provider.GetInstances(&instancesFlags)
+	instances, err := provider.GetInstances(instancesFlags)
 	if err != nil {
 		Exitf("Failed to list instances: %v\n", err)
 	}

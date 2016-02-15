@@ -12,7 +12,7 @@ var (
 	cmdDestroyInstance = &cobra.Command{
 		Short: "Destroy a single instance",
 		Long:  "Destroy a single instance",
-		Use:   "instance",
+		Use:   "destroy",
 		Run:   destroyInstance,
 	}
 
@@ -50,7 +50,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 	*/
 
-	if err := provider.DeleteInstance(&destroyInstanceFlags, newDnsProvider()); err != nil {
+	if err := provider.DeleteInstance(destroyInstanceFlags, newDnsProvider()); err != nil {
 		Exitf("Failed to destroy instance: %v\n", err)
 	}
 

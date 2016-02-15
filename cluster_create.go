@@ -18,9 +18,9 @@ var (
 func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Name, "name", "", "Cluster name")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Image, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Region, "region", defaultClusterRegion(), "Region to create the instances in")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.Size, "size", defaultClusterSize, "Size of the new instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ImageID, "image", defaultClusterImage, "OS image to run on new instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RegionID, "region", defaultClusterRegion(), "Region to create the instances in")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TypeID, "type", defaultClusterType, "Type of the new instances")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
@@ -42,7 +42,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// See if there are already instances for the given cluster
-	instances, err := provider.GetInstances(&createClusterFlags.ClusterInfo)
+	instances, err := provider.GetInstances(createClusterFlags.ClusterInfo)
 	if err != nil {
 		Exitf("Failed to query existing instances: %v\n", err)
 	}
@@ -51,7 +51,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
-	err = provider.CreateCluster(&createClusterFlags, newDnsProvider())
+	err = provider.CreateCluster(createClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}

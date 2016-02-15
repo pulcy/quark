@@ -7,7 +7,7 @@ import (
 )
 
 // RegisterInstance creates DNS records for an instance
-func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options *CreateInstanceOptions, name string, publicIpv4, publicIpv6 string) error {
+func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, publicIpv4, publicIpv6 string) error {
 	logger.Info("%s: %s: %s", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance

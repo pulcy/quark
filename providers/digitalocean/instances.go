@@ -9,7 +9,7 @@ import (
 	"github.com/pulcy/quark/providers"
 )
 
-func (this *doProvider) GetInstances(info *providers.ClusterInfo) ([]providers.ClusterInstance, error) {
+func (this *doProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
 	droplets, err := this.getInstances(info)
 	if err != nil {
 		return nil, err
@@ -22,7 +22,7 @@ func (this *doProvider) GetInstances(info *providers.ClusterInfo) ([]providers.C
 	return result, nil
 }
 
-func (this *doProvider) getInstances(info *providers.ClusterInfo) ([]godo.Droplet, error) {
+func (this *doProvider) getInstances(info providers.ClusterInfo) ([]godo.Droplet, error) {
 	client := NewDOClient(this.token)
 	droplets, err := DropletList(client)
 	if err != nil {

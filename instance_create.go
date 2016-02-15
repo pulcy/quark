@@ -18,9 +18,9 @@ var (
 func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Domain, "domain", defaultDomain(), "Cluster domain")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Name, "name", "", "Cluster name")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Image, "image", defaultClusterImage, "OS image to run on new instances")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Region, "region", defaultClusterRegion(), "Region to create the instances in")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.Size, "size", defaultClusterSize, "Size of the new instances")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.ImageID, "image", defaultClusterImage, "OS image to run on new instances")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RegionID, "region", defaultClusterRegion(), "Region to create the instances in")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TypeID, "type", defaultClusterType, "Type of the new instances")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl(), "URL of private docker registry")
@@ -43,7 +43,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// See if there are already instances for the given cluster
-	instances, err := provider.GetInstances(&createInstanceFlags.ClusterInfo)
+	instances, err := provider.GetInstances(createInstanceFlags.ClusterInfo)
 	if err != nil {
 		Exitf("Failed to query existing instances: %v\n", err)
 	}
@@ -52,7 +52,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
-	instance, err := provider.CreateInstance(&createInstanceFlags, newDnsProvider())
+	instance, err := provider.CreateInstance(createInstanceFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new instance: %v\n", err)
 	}

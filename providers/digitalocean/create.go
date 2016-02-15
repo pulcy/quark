@@ -15,7 +15,7 @@ const (
 	cloudConfigTemplate = "templates/cloud-config.tmpl"
 )
 
-func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+func (dp *doProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
@@ -23,7 +23,7 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 		go func(i int) {
 			defer wg.Done()
 			instanceOptions := options.NewCreateInstanceOptions()
-			_, err := dp.CreateInstance(&instanceOptions, dnsProvider)
+			_, err := dp.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}
@@ -39,7 +39,7 @@ func (dp *doProvider) CreateCluster(options *providers.CreateClusterOptions, dns
 	return nil
 }
 
-func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (dp *doProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	client := NewDOClient(dp.token)
 
 	keys := []godo.DropletCreateSSHKey{}
@@ -66,9 +66,9 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 
 	request := &godo.DropletCreateRequest{
 		Name:              options.InstanceName,
-		Region:            options.Region,
-		Size:              options.Size,
-		Image:             godo.DropletCreateImage{Slug: options.Image},
+		Region:            options.RegionID,
+		Size:              options.TypeID,
+		Image:             godo.DropletCreateImage{Slug: options.ImageID},
 		SSHKeys:           keys,
 		Backups:           false,
 		IPv6:              true,
@@ -77,7 +77,7 @@ func (dp *doProvider) CreateInstance(options *providers.CreateInstanceOptions, d
 	}
 
 	// Create droplet
-	dp.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.Image)
+	dp.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.ImageID)
 	dp.Logger.Debug(cloudConfig)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {

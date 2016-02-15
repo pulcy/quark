@@ -4,7 +4,7 @@ import (
 	"github.com/pulcy/quark/providers"
 )
 
-func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
+func (this *doProvider) DeleteCluster(info providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
 	droplets, err := this.getInstances(info)
 	if err != nil {
 		return err
@@ -27,9 +27,9 @@ func (this *doProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider p
 	return nil
 }
 
-func (dp *doProvider) DeleteInstance(info *providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
+func (dp *doProvider) DeleteInstance(info providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
 	fullName := info.String()
-	droplets, err := dp.getInstances(&info.ClusterInfo)
+	droplets, err := dp.getInstances(info.ClusterInfo)
 	if err != nil {
 		return err
 	}

@@ -22,7 +22,7 @@ const (
 )
 
 // Create a machine instance
-func (vp *vultrProvider) CreateInstance(options *providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (vp *vultrProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	// Create server
 	id, err := vp.createServer(options)
 	if err != nil {
@@ -47,7 +47,7 @@ func (vp *vultrProvider) CreateInstance(options *providers.CreateInstanceOptions
 }
 
 // Create a single server
-func (vp *vultrProvider) createServer(options *providers.CreateInstanceOptions) (string, error) {
+func (vp *vultrProvider) createServer(options providers.CreateInstanceOptions) (string, error) {
 	// Find SSH key ID
 	var sshid string
 	if len(options.SSHKeyNames) > 0 {
@@ -108,7 +108,7 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 }
 
 // Create an entire cluster
-func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+func (vp *vultrProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
@@ -116,7 +116,7 @@ func (vp *vultrProvider) CreateCluster(options *providers.CreateClusterOptions, 
 		go func(i int) {
 			defer wg.Done()
 			instanceOptions := options.NewCreateInstanceOptions()
-			_, err := vp.CreateInstance(&instanceOptions, dnsProvider)
+			_, err := vp.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}

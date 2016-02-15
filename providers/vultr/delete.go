@@ -5,7 +5,7 @@ import (
 )
 
 // Remove all instances of a cluster
-func (vp *vultrProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
+func (vp *vultrProvider) DeleteCluster(info providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
 	servers, err := vp.getInstances(info)
 	if err != nil {
 		return err
@@ -27,9 +27,9 @@ func (vp *vultrProvider) DeleteCluster(info *providers.ClusterInfo, dnsProvider 
 	return nil
 }
 
-func (vp *vultrProvider) DeleteInstance(info *providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
+func (vp *vultrProvider) DeleteInstance(info providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
 	fullName := info.String()
-	servers, err := vp.getInstances(&info.ClusterInfo)
+	servers, err := vp.getInstances(info.ClusterInfo)
 	if err != nil {
 		return err
 	}

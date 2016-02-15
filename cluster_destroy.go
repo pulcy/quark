@@ -12,7 +12,7 @@ var (
 	cmdDestroyCluster = &cobra.Command{
 		Short: "Destroy an entire cluster",
 		Long:  "Destroy an entire cluster",
-		Use:   "cluster",
+		Use:   "destroy",
 		Run:   destroyCluster,
 	}
 
@@ -38,7 +38,7 @@ func destroyCluster(cmd *cobra.Command, args []string) {
 		Exitf("%v\n", err)
 	}
 	provider := newProvider()
-	err := provider.DeleteCluster(&destroyClusterFlags, newDnsProvider())
+	err := provider.DeleteCluster(destroyClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to destroy cluster: %v\n", err)
 	}
