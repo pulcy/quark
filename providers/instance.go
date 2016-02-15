@@ -48,6 +48,28 @@ func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
 	return id, maskAny(err)
 }
 
+func (i ClusterInstance) GetVaultCrt(log *logging.Logger) (string, error) {
+	log.Info("Fetching vault.crt on %s", i.PublicIpv4)
+	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.crt", "", false)
+	return id, maskAny(err)
+}
+
+func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
+	const prefix = "VAULT_ADDR="
+	log.Info("Fetching vault-addr on %s", i.PublicIpv4)
+	env, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.env", "", false)
+	if err != nil {
+		return "", maskAny(err)
+	}
+	for _, line := range strings.Split(env, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, prefix) {
+			return strings.TrimSpace(line[len(prefix):]), nil
+		}
+	}
+	return "", maskAny(errgo.New("VAULT_ADDR not found in /etc/pulcy/vault.env"))
+}
+
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
 	log.Info("Fetching etcd proxy status on %s", i.PublicIpv4)
 	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)

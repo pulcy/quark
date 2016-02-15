@@ -52,12 +52,27 @@ func createInstance(cmd *cobra.Command, args []string) {
 	if len(instances) == 0 {
 		Exitf("Cluster %s.%s does not exist.\n", createInstanceFlags.Name, createInstanceFlags.Domain)
 	}
+
 	// Fetch cluster ID
 	clusterID, err := instances[0].GetClusterID(log)
 	if err != nil {
 		Exitf("Failed to get cluster-id: %v\n", err)
 	}
 	createInstanceFlags.ID = clusterID
+
+	// Fetch vault address
+	vaultAddr, err := instances[0].GetVaultAddr(log)
+	if err != nil {
+		Exitf("Failed to get vault-addr: %v\n", err)
+	}
+	createInstanceFlags.VaultAddress = vaultAddr
+
+	// Fetch vault CA certificate
+	vaultCACert, err := instances[0].GetVaultCrt(log)
+	if err != nil {
+		Exitf("Failed to get vault-cacert: %v\n", err)
+	}
+	createInstanceFlags.VaultCertificate = vaultCACert
 
 	// Create
 	instance, err := provider.CreateInstance(createInstanceFlags, newDnsProvider())

@@ -34,6 +34,16 @@ write_files:
     owner: "root"
     content: |
       {{.ClusterID}}
+  - path: "/etc/pulcy/vault.env"
+    permissions: "0400"
+    owner: "root"
+    content: |
+      {{yamlPrefix .VaultEnv 6}}
+  - path: "/etc/pulcy/vault.crt"
+    permissions: "0400"
+    owner: "root"
+    content: |
+      {{yamlPrefix .VaultCrt 6}}
 
 {{ if .SshKeys }}
 ssh_authorized_keys:{{ range $key := .SshKeys }}

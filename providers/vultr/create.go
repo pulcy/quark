@@ -126,8 +126,12 @@ func (vp *vultrProvider) CreateCluster(options providers.CreateClusterOptions, d
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions := options.NewCreateInstanceOptions()
-			_, err := vp.CreateInstance(instanceOptions, dnsProvider)
+			instanceOptions, err := options.NewCreateInstanceOptions()
+			if err != nil {
+				errors <- maskAny(err)
+				return
+			}
+			_, err = vp.CreateInstance(instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			}

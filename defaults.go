@@ -37,3 +37,11 @@ func defaultSshKeyGithubAccount() string {
 func defaultVagrantFolder() string {
 	return os.Getenv("QUARK_VAGRANT_FOLDER")
 }
+
+func defaultVaultAddr() string {
+	return os.Getenv("VAULT_ADDR")
+}
+
+func defaultVaultCACert() string {
+	return os.Getenv("VAULT_CACERT")
+}

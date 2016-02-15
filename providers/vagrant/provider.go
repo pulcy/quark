@@ -100,7 +100,10 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 	}
 
 	// user-data
-	instanceOptions := options.NewCreateInstanceOptions()
+	instanceOptions, err := options.NewCreateInstanceOptions()
+	if err != nil {
+		return maskAny(err)
+	}
 	opts := instanceOptions.NewCloudConfigOptions()
 	opts.PrivateIPv4 = "$private_ipv4"
 	opts.SshKeys = sshKeys

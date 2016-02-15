@@ -3,6 +3,7 @@ package providers
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"strings"
 
 	"github.com/dchest/uniuri"
@@ -102,11 +103,18 @@ type CreateClusterOptions struct {
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
 	PrivateRegistryPassword string // Password of private docker registry
+	VaultAddress            string // URL of the vault
+	VaultCertificatePath    string // Path of the vault ca-cert file
 }
 
 // NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
 // values inherited from the given CreateClusterOptions
-func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions {
+func (o *CreateClusterOptions) NewCreateInstanceOptions() (CreateInstanceOptions, error) {
+	raw, err := ioutil.ReadFile(o.VaultCertificatePath)
+	if err != nil {
+		return CreateInstanceOptions{}, maskAny(err)
+	}
+	vaultCertificate := string(raw)
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
@@ -117,9 +125,11 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions 
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
+		VaultAddress:            o.VaultAddress,
+		VaultCertificate:        vaultCertificate,
 	}
 	io.SetupNames(o.Name, o.Domain)
-	return io
+	return io, nil
 }
 
 // CreateInstanceOptions contains all options for creating an instance
@@ -136,6 +146,8 @@ type CreateInstanceOptions struct {
 	PrivateRegistryUserName string // Username of private docker registry
 	PrivateRegistryPassword string // Password of private docker registry
 	EtcdProxy               bool   // If set, this instance will be an ETCD proxy
+	VaultAddress            string // URL of the vault
+	VaultCertificate        string // Contents of the vault ca-cert
 }
 
 // SetupNames configured the ClusterName and InstanceName of the given options
@@ -157,6 +169,11 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
+		VaultEnv: strings.Join([]string{
+			fmt.Sprintf("VAULT_ADDR=%s", o.VaultAddress),
+			"VAULT_CACERT=/etc/pulcy/vault.crt",
+		}, "\n"),
+		VaultCrt: o.VaultCertificate,
 	}
 	return cco
 }
@@ -179,6 +196,8 @@ type CloudConfigOptions struct {
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
 	PrivateRegistryPassword string // Password of private docker registry
+	VaultEnv                string // Contents of /etc/pulcy/vault.env
+	VaultCrt                string // Contents of /etc/pulcy/vault.crt
 }
 
 // Validate the given options
@@ -230,6 +249,12 @@ func (cco CreateClusterOptions) Validate() error {
 	if cco.PrivateRegistryPassword == "" {
 		return errors.New("Please specify a private-registry-password")
 	}
+	if cco.VaultAddress == "" {
+		return errors.New("Please specify a vault-addr")
+	}
+	if cco.VaultCertificatePath == "" {
+		return errors.New("Please specify a vault-cacert")
+	}
 	return nil
 }
 
@@ -252,6 +277,12 @@ func (cio CreateInstanceOptions) Validate() error {
 	}
 	if cio.GluonImage == "" {
 		return errors.New("Please specify a gluon-image")
+	}
+	if cio.VaultAddress == "" {
+		return errors.New("Please specify a vault-addr")
+	}
+	if cio.VaultCertificate == "" {
+		return errors.New("Please specify a vault-cacert")
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package templates
 import (
 	"bytes"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"github.com/juju/errgo"
@@ -22,8 +23,9 @@ func Render(templateName string, options interface{}) (string, error) {
 	var tmpl *template.Template
 	tmpl = template.New(templateName)
 	funcMap := template.FuncMap{
-		"escape": escape,
-		"quote":  strconv.Quote,
+		"escape":     escape,
+		"quote":      strconv.Quote,
+		"yamlPrefix": yamlPrefix,
 	}
 	tmpl.Funcs(funcMap)
 	_, err = tmpl.Parse(string(asset))
@@ -44,4 +46,21 @@ func Render(templateName string, options interface{}) (string, error) {
 func escape(s string) string {
 	s = strconv.Quote(s)
 	return s[1 : len(s)-1]
+}
+
+func yamlPrefix(s string, spaces int) string {
+	lines := strings.Split(s, "\n")
+	result := ""
+	prefix := ""
+	for spaces > 0 {
+		prefix = prefix + " "
+		spaces--
+	}
+	for i, l := range lines {
+		if i > 0 {
+			result = result + "\n" + prefix
+		}
+		result = result + l
+	}
+	return result
 }
