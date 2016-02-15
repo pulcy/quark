@@ -93,11 +93,17 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 		return maskAny(err)
 	}
 
+	// Fetch SSH keys
+	sshKeys, err := providers.FetchSSHKeys(options.SSHKeyGithubAccount)
+	if err != nil {
+		return maskAny(err)
+	}
+
 	// user-data
 	instanceOptions := options.NewCreateInstanceOptions()
 	opts := instanceOptions.NewCloudConfigOptions()
 	opts.PrivateIPv4 = "$private_ipv4"
-	opts.IncludeSshKeys = true
+	opts.SshKeys = sshKeys
 	opts.PrivateClusterDevice = "eth1"
 
 	content, err = templates.Render(cloudConfigTemplate, opts)

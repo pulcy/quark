@@ -30,6 +30,10 @@ func defaultSshKeys() []string {
 	return []string{os.Getenv("QUARK_SSH_KEY")}
 }
 
+func defaultSshKeyGithubAccount() string {
+	return os.Getenv("QUARK_SSH_KEY_GITHUB_ACCOUNT")
+}
+
 func defaultVagrantFolder() string {
 	return os.Getenv("QUARK_VAGRANT_FOLDER")
 }

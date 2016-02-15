@@ -13,12 +13,18 @@ const (
 // Apply defaults for the given options
 func (vp *doProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	if options.SSHKeyGithubAccount == "" {
+		options.SSHKeyGithubAccount = "-"
+	}
 	return options
 }
 
 // Apply defaults for the given options
 func (vp *doProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	if options.SSHKeyGithubAccount == "" {
+		options.SSHKeyGithubAccount = "-"
+	}
 	return options
 }
 

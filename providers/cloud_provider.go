@@ -95,6 +95,7 @@ type CreateClusterOptions struct {
 	ClusterInfo
 	InstanceConfig
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
+	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	InstanceCount           int      // Number of instances to start
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
@@ -110,6 +111,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions 
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
 		SSHKeyNames:             o.SSHKeyNames,
+		SSHKeyGithubAccount:     o.SSHKeyGithubAccount,
 		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
@@ -123,10 +125,11 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions() CreateInstanceOptions 
 // CreateInstanceOptions contains all options for creating an instance
 type CreateInstanceOptions struct {
 	ClusterInfo
-	ClusterName  string // Full name of the cluster e.g. "dev1.example.com"
-	InstanceName string // Name of the instance e.g. "abc123.dev1.example.com"
 	InstanceConfig
+	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
+	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
 	SSHKeyNames             []string // List of names of SSH keys to install
+	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
 	PrivateRegistryUrl      string // URL of private docker registry
@@ -170,7 +173,7 @@ type CloudConfigOptions struct {
 	FleetMetadata           string
 	PrivateIPv4             string
 	GluonImage              string
-	IncludeSshKeys          bool
+	SshKeys                 []string
 	RebootStrategy          string
 	PrivateClusterDevice    string
 	PrivateRegistryUrl      string // URL of private docker registry
@@ -195,10 +198,10 @@ func (ic InstanceConfig) Validate() error {
 // Validate the given options
 func (cco CreateClusterOptions) Validate() error {
 	if cco.Domain == "" {
-		return errors.New("Please specific a domain")
+		return errors.New("Please specify a domain")
 	}
 	if cco.Name == "" {
-		return errors.New("Please specific a name")
+		return errors.New("Please specify a name")
 	}
 	if strings.ContainsAny(cco.Name, ".") {
 		return errors.New("Invalid characters in name")
@@ -207,22 +210,25 @@ func (cco CreateClusterOptions) Validate() error {
 		return maskAny(err)
 	}
 	if len(cco.SSHKeyNames) == 0 {
-		return errors.New("Please specific at least one SSH key")
+		return errors.New("Please specify at least one SSH key")
+	}
+	if cco.SSHKeyGithubAccount == "" {
+		return errors.New("Please specify a valid ssh key github account")
 	}
 	if cco.InstanceCount < 1 {
-		return errors.New("Please specific a valid instance count")
+		return errors.New("Please specify a valid instance count")
 	}
 	if cco.GluonImage == "" {
-		return errors.New("Please specific a gluon-image")
+		return errors.New("Please specify a gluon-image")
 	}
 	if cco.PrivateRegistryUrl == "" {
-		return errors.New("Please specific a private-registry-url")
+		return errors.New("Please specify a private-registry-url")
 	}
 	if cco.PrivateRegistryUserName == "" {
-		return errors.New("Please specific a private-registry-username")
+		return errors.New("Please specify a private-registry-username")
 	}
 	if cco.PrivateRegistryPassword == "" {
-		return errors.New("Please specific a private-registry-password")
+		return errors.New("Please specify a private-registry-password")
 	}
 	return nil
 }
@@ -230,10 +236,10 @@ func (cco CreateClusterOptions) Validate() error {
 // Validate the given options
 func (cio CreateInstanceOptions) Validate() error {
 	if cio.ClusterName == "" {
-		return errors.New("Please specific a cluster-name")
+		return errors.New("Please specify a cluster-name")
 	}
 	if cio.InstanceName == "" {
-		return errors.New("Please specific a instance-name")
+		return errors.New("Please specify a instance-name")
 	}
 	if err := cio.InstanceConfig.Validate(); err != nil {
 		return maskAny(err)
@@ -241,8 +247,11 @@ func (cio CreateInstanceOptions) Validate() error {
 	if len(cio.SSHKeyNames) == 0 {
 		return errors.New("Please specific at least one SSH key")
 	}
+	if cio.SSHKeyGithubAccount == "" {
+		return errors.New("Please specify a valid ssh key github account")
+	}
 	if cio.GluonImage == "" {
-		return errors.New("Please specific a gluon-image")
+		return errors.New("Please specify a gluon-image")
 	}
 	return nil
 }

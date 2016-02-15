@@ -53,11 +53,17 @@ func (vp *vultrProvider) createServer(options providers.CreateInstanceOptions) (
 			return "", maskAny(err)
 		}
 	}
+	// Fetch SSH keys
+	sshKeys, err := providers.FetchSSHKeys(options.SSHKeyGithubAccount)
+	if err != nil {
+		return "", maskAny(err)
+	}
+
 	// Create cloud-config
 	// user-data
 	ccOpts := options.NewCloudConfigOptions()
 	ccOpts.PrivateIPv4 = "$private_ipv4"
-	ccOpts.IncludeSshKeys = true
+	ccOpts.SshKeys = sshKeys
 	ccOpts.PrivateClusterDevice = "eth1"
 	userData, err := templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {
