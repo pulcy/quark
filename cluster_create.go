@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/dchest/uniuri"
 	"github.com/spf13/cobra"
 
 	"github.com/pulcy/quark/providers"
@@ -36,6 +38,7 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
+	createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
 	provider := newProvider()
 	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
 
@@ -72,5 +75,5 @@ func createCluster(cmd *cobra.Command, args []string) {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 
-	Infof("Cluster created\n")
+	Infof("Cluster created with ID: %s\n", createClusterFlags.ID)
 }

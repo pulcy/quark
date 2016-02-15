@@ -36,6 +36,12 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 	return out, nil
 }
 
+func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
+	log.Info("Fetching cluster-id on %s", i.PublicIpv4)
+	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/cluster-id", "", false)
+	return id, maskAny(err)
+}
+
 func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
 	log.Info("Fetching machine-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "cat /etc/machine-id", "", false)

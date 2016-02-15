@@ -28,6 +28,13 @@ coreos:
         [Install]
         WantedBy=multi-user.target
 
+write_files:
+  - path: "/etc/pulcy/cluster-id"
+    permissions: "0400"
+    owner: "root"
+    content: |
+      {{.ClusterID}}
+
 {{ if .IncludeSshKeys }}
 ssh_authorized_keys:
 - ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAIBfcu+ZwnD0E6ouxcnIKmEkADmP0tmsOYH8V3cLMkqYeXsTrvrDxdkXcU69ljZ5z4K25KFbxUZTLPnvvWa8+Wp97RRwKz4v3PG4LBI7af8r4gAcqMN0D5goSZr+6G89HdVDzwFhXNOtEXVAu2n9deKbP2DVJ2SzDBzISwziUy9L+w==

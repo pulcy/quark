@@ -53,6 +53,7 @@ type CloudProvider interface {
 
 // ClusterInfo describes a cluster
 type ClusterInfo struct {
+	ID     string // /etc/pulcy/cluster-id, used for vault-monkey authentication
 	Domain string // Domain postfix (e.g. pulcy.com)
 	Name   string // Name of the cluster
 }
@@ -146,6 +147,7 @@ func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
 // values inherited from the given CreateInstanceOptions
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 	cco := CloudConfigOptions{
+		ClusterID:               o.ClusterInfo.ID,
 		FleetMetadata:           o.fleetMetadata(),
 		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
@@ -164,6 +166,7 @@ func (o *CreateInstanceOptions) fleetMetadata() string {
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
+	ClusterID               string
 	FleetMetadata           string
 	PrivateIPv4             string
 	GluonImage              string
