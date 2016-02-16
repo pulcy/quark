@@ -49,7 +49,7 @@ $(GOBUILDDIR):
 
 update-vendor:
 	@rm -Rf $(VENDORDIR)
-	@pulcy go vendor -V $(VENDORDIR) \
+	@pulsar go vendor -V $(VENDORDIR) \
 		github.com/dchest/uniuri \
 		github.com/digitalocean/godo \
 		github.com/JamesClonk/vultr/lib \
