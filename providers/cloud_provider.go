@@ -123,7 +123,7 @@ type CreateClusterOptions struct {
 
 // NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
 // values inherited from the given CreateClusterOptions
-func (o *CreateClusterOptions) NewCreateInstanceOptions() (CreateInstanceOptions, error) {
+func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore bool, instanceIndex int) (CreateInstanceOptions, error) {
 	raw, err := ioutil.ReadFile(o.VaultCertificatePath)
 	if err != nil {
 		return CreateInstanceOptions{}, maskAny(err)
@@ -132,6 +132,8 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions() (CreateInstanceOptions
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
+		InstanceIndex:           instanceIndex,
+		RoleCore:                isCore,
 		SSHKeyNames:             o.SSHKeyNames,
 		SSHKeyGithubAccount:     o.SSHKeyGithubAccount,
 		GluonImage:              o.GluonImage,
@@ -152,6 +154,8 @@ type CreateInstanceOptions struct {
 	InstanceConfig
 	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
 	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
+	InstanceIndex           int      // 0,... used for odd/even metadata
+	RoleCore                bool     // If set, this instance will get `core=true` metadata
 	SSHKeyNames             []string // List of names of SSH keys to install
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
@@ -177,7 +181,7 @@ func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 	cco := CloudConfigOptions{
 		ClusterID:               o.ClusterInfo.ID,
-		FleetMetadata:           o.fleetMetadata(),
+		FleetMetadata:           o.fleetMetadata(o.RoleCore, o.InstanceIndex),
 		GluonImage:              o.GluonImage,
 		RebootStrategy:          o.RebootStrategy,
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
@@ -193,8 +197,16 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 }
 
 // fleetMetadata creates a valid fleet metadata string for use in cloud-config
-func (o *CreateInstanceOptions) fleetMetadata() string {
+func (o *CreateInstanceOptions) fleetMetadata(isCore bool, instanceIndex int) string {
 	list := []string{fmt.Sprintf("region=%s", o.RegionID)}
+	if instanceIndex%2 == 0 {
+		list = append(list, "even=true")
+	} else {
+		list = append(list, "odd=true")
+	}
+	if isCore {
+		list = append(list, "core=true")
+	}
 	return strings.Join(list, ",")
 }
 

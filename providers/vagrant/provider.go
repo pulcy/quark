@@ -138,7 +138,7 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 	sshKeys = append(sshKeys, insecureKey)
 
 	// user-data
-	instanceOptions, err := options.NewCreateInstanceOptions()
+	instanceOptions, err := options.NewCreateInstanceOptions(true, 0)
 	if err != nil {
 		return maskAny(err)
 	}

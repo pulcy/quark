@@ -140,7 +140,7 @@ func (vp *vultrProvider) CreateCluster(options providers.CreateClusterOptions, d
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions, err := options.NewCreateInstanceOptions()
+			instanceOptions, err := options.NewCreateInstanceOptions(true, i)
 			if err != nil {
 				errors <- maskAny(err)
 				return

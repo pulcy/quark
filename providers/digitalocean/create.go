@@ -36,7 +36,7 @@ func (dp *doProvider) CreateCluster(options providers.CreateClusterOptions, dnsP
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions, err := options.NewCreateInstanceOptions()
+			instanceOptions, err := options.NewCreateInstanceOptions(true, i)
 			if err != nil {
 				errors <- maskAny(err)
 				return
