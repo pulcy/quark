@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -51,9 +52,19 @@ func showInstances(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to list instances: %v\n", err)
 	}
-	lines := []string{"Name | Private IP | Public IP"}
+	clusterMembers, err := instances.AsClusterMemberList(log, nil)
+	if err != nil {
+		Exitf("Failed to fetch instance member data: %v\n", err)
+	}
+
+	lines := []string{"Name | Private IP | Public IP | Machine ID | Options"}
 	for _, i := range instances {
-		lines = append(lines, fmt.Sprintf("%s | %s | %s", i.Name, i.PrivateIpv4, i.PublicIpv4))
+		cm, _ := clusterMembers.Find(i) // ignore errors
+		options := []string{}
+		if cm.EtcdProxy {
+			options = append(options, "etcd-proxy")
+		}
+		lines = append(lines, fmt.Sprintf("%s | %s | %s | %s | %s", i.Name, i.PrivateIpv4, i.PublicIpv4, cm.MachineID, strings.Join(options, ",")))
 	}
 	result := columnize.SimpleFormat(lines)
 	fmt.Println(result)

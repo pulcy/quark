@@ -54,8 +54,9 @@ type vagrantProvider struct {
 
 func NewProvider(logger *logging.Logger, folder string) providers.CloudProvider {
 	return &vagrantProvider{
-		Logger: logger,
-		folder: folder,
+		Logger:        logger,
+		folder:        folder,
+		instanceCount: 3,
 	}
 }
 

@@ -57,20 +57,20 @@ func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
 }
 
 func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
-	log.Info("Fetching machine-id on %s", i.PublicIpv4)
+	log.Debug("Fetching machine-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "cat /etc/machine-id", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultCrt(log *logging.Logger) (string, error) {
-	log.Info("Fetching vault.crt on %s", i.PublicIpv4)
+	log.Debug("Fetching vault.crt on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.crt", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 	const prefix = "VAULT_ADDR="
-	log.Info("Fetching vault-addr on %s", i.PublicIpv4)
+	log.Debug("Fetching vault-addr on %s", i.PublicIpv4)
 	env, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.env", "", false)
 	if err != nil {
 		return "", maskAny(err)
@@ -85,7 +85,7 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 }
 
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
-	log.Info("Fetching etcd proxy status on %s", i.PublicIpv4)
+	log.Debug("Fetching etcd proxy status on %s", i.PublicIpv4)
 	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)
 	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
 }
@@ -139,26 +139,6 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 		PrivateIP: i.PrivateIpv4,
 		EtcdProxy: etcdProxy,
 	}, nil
-}
-
-type ClusterMember struct {
-	MachineID string
-	PrivateIP string
-	EtcdProxy bool
-}
-
-type ClusterMemberList []ClusterMember
-
-func (cml ClusterMemberList) Render() string {
-	data := ""
-	for _, cm := range cml {
-		proxy := ""
-		if cm.EtcdProxy {
-			proxy = " etcd-proxy"
-		}
-		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.PrivateIP, proxy)
-	}
-	return data
 }
 
 type InitialSetupOptions struct {
