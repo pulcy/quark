@@ -56,13 +56,15 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
+	provider := newProvider()
+	createClusterFlags = provider.CreateClusterDefaults(createClusterFlags)
+
+	// Create cluster ID if needed
 	if createClusterFlags.ID == "" {
 		createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
 	} else {
 		createClusterFlags.ID = strings.ToLower(createClusterFlags.ID)
 	}
-	provider := newProvider()
-	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
 
 	// Validate
 	if err := createClusterFlags.Validate(); err != nil {
@@ -84,16 +86,13 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
-	err = provider.CreateCluster(createClusterFlags, newDnsProvider())
+	err = provider.CreateCluster(log, createClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}
 
 	// Update all members
-	isEtcdProxy := func(i providers.ClusterInstance) bool {
-		return false
-	}
-	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
+	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 

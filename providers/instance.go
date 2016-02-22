@@ -51,26 +51,26 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 }
 
 func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
-	log.Info("Fetching cluster-id on %s", i.PublicIpv4)
+	log.Debug("Fetching cluster-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/cluster-id", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
-	log.Info("Fetching machine-id on %s", i.PublicIpv4)
+	log.Debug("Fetching machine-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "cat /etc/machine-id", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultCrt(log *logging.Logger) (string, error) {
-	log.Info("Fetching vault.crt on %s", i.PublicIpv4)
+	log.Debug("Fetching vault.crt on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.crt", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 	const prefix = "VAULT_ADDR="
-	log.Info("Fetching vault-addr on %s", i.PublicIpv4)
+	log.Debug("Fetching vault-addr on %s", i.PublicIpv4)
 	env, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.env", "", false)
 	if err != nil {
 		return "", maskAny(err)
@@ -85,7 +85,7 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 }
 
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
-	log.Info("Fetching etcd proxy status on %s", i.PublicIpv4)
+	log.Debug("Fetching etcd proxy status on %s", i.PublicIpv4)
 	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)
 	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
 }
@@ -125,28 +125,93 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP s
 	return nil
 }
 
-type ClusterMember struct {
-	MachineID string
-	PrivateIP string
-	EtcdProxy bool
+func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, error) {
+	clusterID, err := i.GetClusterID(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	machineID, err := i.GetMachineID(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	etcdProxy, err := i.IsEtcdProxy(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	return ClusterMember{
+		ClusterID: clusterID,
+		MachineID: machineID,
+		PrivateIP: i.PrivateIpv4,
+		EtcdProxy: etcdProxy,
+	}, nil
 }
 
-// UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
-func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members []ClusterMember) error {
-	data := ""
-	for _, cm := range members {
-		proxy := ""
-		if cm.EtcdProxy {
-			proxy = " etcd-proxy"
-		}
-		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.PrivateIP, proxy)
-	}
+type InitialSetupOptions struct {
+	ClusterMembers ClusterMemberList
+	FleetMetadata  string
+}
+
+// InitialSetup creates initial files and calls gluon for the first time
+func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOptions, iso InitialSetupOptions) error {
 	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
 		return maskAny(err)
 	}
+	data := iso.ClusterMembers.Render()
 	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
 		return maskAny(err)
 	}
+
+	vaultEnv := []string{
+		fmt.Sprintf("VAULT_ADDR=%s", cio.VaultAddress),
+		fmt.Sprintf("VAULT_CACERT=/etc/pulcy/vault.crt"),
+	}
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.env", strings.Join(vaultEnv, "\n"), false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.env", "", false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", cio.VaultCertificate, false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
+		return maskAny(err)
+	}
+
+	log.Info("Downloading gluon on %s", i.PublicIpv4)
+	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /home/core/bin", "", false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("docker run --rm -v /home/core/bin:/destination/ %s", cio.GluonImage), "", false); err != nil {
+		return maskAny(err)
+	}
+	log.Info("Running gluon on %s", i.PublicIpv4)
+	gluonArgs := []string{
+		fmt.Sprintf("--gluon-image=%s", cio.GluonImage),
+		fmt.Sprintf("--docker-ip=%s", i.PrivateIpv4),
+		fmt.Sprintf("--private-ip=%s", i.PrivateIpv4),
+		fmt.Sprintf("--private-cluster-device=%s", i.PrivateClusterDevice),
+		fmt.Sprintf("--private-registry-url=%s", cio.PrivateRegistryUrl),
+		fmt.Sprintf("--private-registry-username=%s", cio.PrivateRegistryUserName),
+		fmt.Sprintf("--private-registry-password=%s", cio.PrivateRegistryPassword),
+		fmt.Sprintf("--fleet-metadata=%s", iso.FleetMetadata),
+	}
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/gluon setup %s", strings.Join(gluonArgs, " ")), "", false); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
+func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members ClusterMemberList) error {
+	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
+		return maskAny(err)
+	}
+	data := members.Render()
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
+		return maskAny(err)
+	}
+
 	log.Info("Restarting gluon on %s", i.PublicIpv4)
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo systemctl restart gluon.service"), "", false); err != nil {
 		return maskAny(err)

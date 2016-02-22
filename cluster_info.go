@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/ryanuber/columnize"
 	"github.com/spf13/cobra"
@@ -25,27 +24,27 @@ import (
 )
 
 var (
-	cmdInstanceList = &cobra.Command{
-		Use: "list",
-		Run: showInstances,
+	cmdClusterInfo = &cobra.Command{
+		Use: "info",
+		Run: showClusterInfo,
 	}
 
-	instancesFlags providers.ClusterInfo
+	clusterInfoFlags providers.ClusterInfo
 )
 
 func init() {
-	cmdInstanceList.Flags().StringVar(&instancesFlags.Domain, "domain", defaultDomain(), "Cluster domain")
-	cmdInstanceList.Flags().StringVar(&instancesFlags.Name, "name", "", "Cluster name")
-	cmdInstance.AddCommand(cmdInstanceList)
+	cmdClusterInfo.Flags().StringVar(&clusterInfoFlags.Domain, "domain", defaultDomain(), "Cluster domain")
+	cmdClusterInfo.Flags().StringVar(&clusterInfoFlags.Name, "name", "", "Cluster name")
+	cmdCluster.AddCommand(cmdClusterInfo)
 }
 
-func showInstances(cmd *cobra.Command, args []string) {
-	clusterInfoFromArgs(&instancesFlags, args)
+func showClusterInfo(cmd *cobra.Command, args []string) {
+	clusterInfoFromArgs(&clusterInfoFlags, args)
 
 	provider := newProvider()
-	instancesFlags = provider.ClusterDefaults(instancesFlags)
+	clusterInfoFlags = provider.ClusterDefaults(clusterInfoFlags)
 
-	if instancesFlags.Name == "" {
+	if clusterInfoFlags.Name == "" {
 		Exitf("Please specify a name\n")
 	}
 	instances, err := provider.GetInstances(instancesFlags)
@@ -57,14 +56,9 @@ func showInstances(cmd *cobra.Command, args []string) {
 		Exitf("Failed to fetch instance member data: %v\n", err)
 	}
 
-	lines := []string{"Name | Private IP | Public IP | Machine ID | Options"}
-	for _, i := range instances {
-		cm, _ := clusterMembers.Find(i) // ignore errors
-		options := []string{}
-		if cm.EtcdProxy {
-			options = append(options, "etcd-proxy")
-		}
-		lines = append(lines, fmt.Sprintf("%s | %s | %s | %s | %s", i.Name, i.PrivateIpv4, i.PublicIpv4, cm.MachineID, strings.Join(options, ",")))
+	lines := []string{
+		fmt.Sprintf("ID | %s", clusterMembers[0].ClusterID),
+		fmt.Sprintf("#Instances | %d", len(instances)),
 	}
 	result := columnize.SimpleFormat(lines)
 	fmt.Println(result)

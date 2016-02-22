@@ -22,10 +22,18 @@ const (
 	defaultRegionID = "ams3"
 	defaultImageID  = "coreos-stable"
 	defaultTypeID   = "512mb"
+
+	privateClusterDevice = "eth1"
 )
 
 // Apply defaults for the given options
-func (vp *doProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+func (dp *doProvider) ClusterDefaults(options providers.ClusterInfo) providers.ClusterInfo {
+	return options
+}
+
+// Apply defaults for the given options
+func (dp *doProvider) CreateInstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+	options.ClusterInfo = dp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	if options.SSHKeyGithubAccount == "" {
 		options.SSHKeyGithubAccount = "-"
@@ -34,7 +42,8 @@ func (vp *doProvider) InstanceDefaults(options providers.CreateInstanceOptions) 
 }
 
 // Apply defaults for the given options
-func (vp *doProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+func (dp *doProvider) CreateClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	options.ClusterInfo = dp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	if options.SSHKeyGithubAccount == "" {
 		options.SSHKeyGithubAccount = "-"

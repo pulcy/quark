@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/JamesClonk/vultr/lib"
+	"github.com/op/go-logging"
 
 	"github.com/pulcy/quark/providers"
 	"github.com/pulcy/quark/templates"
@@ -32,7 +33,7 @@ const (
 )
 
 // Create a machine instance
-func (vp *vultrProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (vp *vultrProvider) CreateInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	// Create server
 	id, err := vp.createServer(options)
 	if err != nil {
@@ -78,7 +79,6 @@ func (vp *vultrProvider) createServer(options providers.CreateInstanceOptions) (
 	ccOpts := options.NewCloudConfigOptions()
 	ccOpts.PrivateIPv4 = "$private_ipv4"
 	ccOpts.SshKeys = sshKeys
-	ccOpts.PrivateClusterDevice = "eth1"
 	userData, err := templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {
 		return "", maskAny(err)
@@ -133,9 +133,10 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 }
 
 // Create an entire cluster
-func (vp *vultrProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+func (vp *vultrProvider) CreateCluster(log *logging.Logger, options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
+	instanceDatas := make(chan instanceData, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -145,11 +146,67 @@ func (vp *vultrProvider) CreateCluster(options providers.CreateClusterOptions, d
 				errors <- maskAny(err)
 				return
 			}
-			_, err = vp.CreateInstance(instanceOptions, dnsProvider)
+			instance, err := vp.CreateInstance(log, instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
+			} else {
+				instanceDatas <- instanceData{
+					CreateInstanceOptions: instanceOptions,
+					ClusterInstance:       instance,
+					FleetMetadata:         instanceOptions.CreateFleetMetadata(true, i),
+				}
 			}
 		}(i)
+	}
+	wg.Wait()
+	close(errors)
+	close(instanceDatas)
+	err := <-errors
+	if err != nil {
+		return maskAny(err)
+	}
+
+	instances := []instanceData{}
+	instanceList := providers.ClusterInstanceList{}
+	for data := range instanceDatas {
+		instances = append(instances, data)
+		instanceList = append(instanceList, data.ClusterInstance)
+	}
+
+	clusterMembers, err := instanceList.AsClusterMemberList(log, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	if err := vp.setupInstances(log, instances, clusterMembers); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
+}
+
+type instanceData struct {
+	CreateInstanceOptions providers.CreateInstanceOptions
+	ClusterInstance       providers.ClusterInstance
+	FleetMetadata         string
+}
+
+func (vp *vultrProvider) setupInstances(log *logging.Logger, instances []instanceData, clusterMembers providers.ClusterMemberList) error {
+	wg := sync.WaitGroup{}
+	errors := make(chan error, len(instances))
+	for _, instance := range instances {
+		wg.Add(1)
+		go func(instance instanceData) {
+			defer wg.Done()
+			iso := providers.InitialSetupOptions{
+				ClusterMembers: clusterMembers,
+				FleetMetadata:  instance.FleetMetadata,
+			}
+			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
+				errors <- maskAny(err)
+				return
+			}
+		}(instance)
 	}
 	wg.Wait()
 	close(errors)

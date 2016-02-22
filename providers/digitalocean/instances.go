@@ -23,21 +23,21 @@ import (
 	"github.com/pulcy/quark/providers"
 )
 
-func (this *doProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
-	droplets, err := this.getInstances(info)
+func (dp *doProvider) GetInstances(info providers.ClusterInfo) (providers.ClusterInstanceList, error) {
+	droplets, err := dp.getInstances(info)
 	if err != nil {
 		return nil, err
 	}
-	result := []providers.ClusterInstance{}
+	result := providers.ClusterInstanceList{}
 	for _, d := range droplets {
-		info := this.clusterInstance(d)
+		info := dp.clusterInstance(d)
 		result = append(result, info)
 	}
 	return result, nil
 }
 
-func (this *doProvider) getInstances(info providers.ClusterInfo) ([]godo.Droplet, error) {
-	client := NewDOClient(this.token)
+func (dp *doProvider) getInstances(info providers.ClusterInfo) ([]godo.Droplet, error) {
+	client := NewDOClient(dp.token)
 	droplets, err := DropletList(client)
 	if err != nil {
 		return nil, err
@@ -57,10 +57,11 @@ func (this *doProvider) getInstances(info providers.ClusterInfo) ([]godo.Droplet
 // clusterInstance creates a ClusterInstance record for the given droplet
 func (dp *doProvider) clusterInstance(d godo.Droplet) providers.ClusterInstance {
 	info := providers.ClusterInstance{
-		Name:        d.Name,
-		PrivateIpv4: getIpv4(d, "private"),
-		PublicIpv4:  getIpv4(d, "public"),
-		PublicIpv6:  getIpv6(d, "public"),
+		Name:                 d.Name,
+		PrivateIpv4:          getIpv4(d, "private"),
+		PublicIpv4:           getIpv4(d, "public"),
+		PublicIpv6:           getIpv6(d, "public"),
+		PrivateClusterDevice: privateClusterDevice,
 	}
 	return info
 }

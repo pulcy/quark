@@ -36,9 +36,14 @@ var (
 	domain         = "pulcy.com"
 )
 
+const (
+	projectName     = "quark"
+	defaultLogLevel = "info"
+)
+
 var (
 	cmdMain = &cobra.Command{
-		Use:              "quark",
+		Use:              projectName,
 		Run:              showUsage,
 		PersistentPreRun: loadDefaults,
 	}
@@ -49,12 +54,14 @@ var (
 	cloudflareEmail   string
 	vagrantFolder     string
 	vultrApiKey       string
+	logLevel          string
 
-	log = logging.MustGetLogger(cmdMain.Use)
+	log = logging.MustGetLogger(projectName)
 )
 
 func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
+	cmdMain.PersistentFlags().StringVar(&logLevel, "log-level", defaultLogLevel, "Log level (debug|info|warning|error)")
 	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|vagrant|vultr]")
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
@@ -84,6 +91,13 @@ func loadDefaults(cmd *cobra.Command, args []string) {
 	if vultrApiKey == "" {
 		vultrApiKey = os.Getenv("VULTR_APIKEY")
 	}
+
+	// Set loglevel
+	level, err := logging.LogLevel(logLevel)
+	if err != nil {
+		Exitf("Invalid log-level '%s': %#v", logLevel, err)
+	}
+	logging.SetLevel(level, projectName)
 }
 
 func newProvider() providers.CloudProvider {

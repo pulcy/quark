@@ -3,30 +3,6 @@
 coreos:
   update:
     reboot-strategy: {{.RebootStrategy}}
-  units:
-    - name: gluon.service
-      content: |
-        [Unit]
-        After=docker.service
-        Requires=docker.service
-        [Service]
-        Type=oneshot
-        EnvironmentFile=/etc/environment
-        ExecStartPre=/bin/sh -c 'mkdir -p /home/core/bin'
-        ExecStartPre=/bin/sh -c '/usr/bin/docker pull {{.GluonImage}}'
-        ExecStartPre=/bin/sh -c '/usr/bin/docker run --rm -v /home/core/bin/:/destination/ {{.GluonImage}}'
-        ExecStart=/home/core/bin/gluon setup \
-        --gluon-image={{.GluonImage}} \
-        --docker-ip=${COREOS_PRIVATE_IPV4} \
-        --private-ip=${COREOS_PRIVATE_IPV4} \
-        --private-cluster-device={{.PrivateClusterDevice}} \
-        --private-registry-url={{.PrivateRegistryUrl}} \
-        --private-registry-username={{.PrivateRegistryUserName}} \
-        --private-registry-password={{.PrivateRegistryPassword}} \
-        --fleet-metadata={{.FleetMetadata}}
-        RemainAfterExit=yes
-        [Install]
-        WantedBy=multi-user.target
 
 write_files:
   - path: "/etc/pulcy/cluster-id"
@@ -34,16 +10,6 @@ write_files:
     owner: "root"
     content: |
       {{.ClusterID}}
-  - path: "/etc/pulcy/vault.env"
-    permissions: "0400"
-    owner: "root"
-    content: |
-      {{yamlPrefix .VaultEnv 6}}
-  - path: "/etc/pulcy/vault.crt"
-    permissions: "0400"
-    owner: "root"
-    content: |
-      {{yamlPrefix .VaultCrt 6}}
 
 {{ if .SshKeys }}
 ssh_authorized_keys:{{ range $key := .SshKeys }}

@@ -22,6 +22,7 @@ import (
 
 	"github.com/dchest/uniuri"
 	"github.com/juju/errgo"
+	"github.com/op/go-logging"
 )
 
 var (
@@ -43,19 +44,22 @@ type CloudProvider interface {
 	ShowInstanceTypes() error
 
 	// Apply defaults for the given options
-	InstanceDefaults(options CreateInstanceOptions) CreateInstanceOptions
+	ClusterDefaults(options ClusterInfo) ClusterInfo
 
 	// Apply defaults for the given options
-	ClusterDefaults(options CreateClusterOptions) CreateClusterOptions
+	CreateInstanceDefaults(options CreateInstanceOptions) CreateInstanceOptions
+
+	// Apply defaults for the given options
+	CreateClusterDefaults(options CreateClusterOptions) CreateClusterOptions
 
 	// Create a machine instance
-	CreateInstance(options CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)
+	CreateInstance(log *logging.Logger, options CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)
 
 	// Create an entire cluster
-	CreateCluster(options CreateClusterOptions, dnsProvider DnsProvider) error
+	CreateCluster(log *logging.Logger, options CreateClusterOptions, dnsProvider DnsProvider) error
 
 	// Get names of instances of a cluster
-	GetInstances(info ClusterInfo) ([]ClusterInstance, error)
+	GetInstances(info ClusterInfo) (ClusterInstanceList, error)
 
 	// Remove all instances of a cluster
 	DeleteCluster(info ClusterInfo, dnsProvider DnsProvider) error
@@ -89,10 +93,11 @@ func (cii ClusterInstanceInfo) String() string {
 
 // ClusterInstance describes a single instance
 type ClusterInstance struct {
-	Name        string
-	PrivateIpv4 string
-	PublicIpv4  string
-	PublicIpv6  string
+	Name                 string
+	PrivateIpv4          string
+	PublicIpv4           string
+	PublicIpv6           string
+	PrivateClusterDevice string
 }
 
 type InstanceConfig struct {
@@ -180,24 +185,14 @@ func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
 // values inherited from the given CreateInstanceOptions
 func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 	cco := CloudConfigOptions{
-		ClusterID:               o.ClusterInfo.ID,
-		FleetMetadata:           o.fleetMetadata(o.RoleCore, o.InstanceIndex),
-		GluonImage:              o.GluonImage,
-		RebootStrategy:          o.RebootStrategy,
-		PrivateRegistryUrl:      o.PrivateRegistryUrl,
-		PrivateRegistryUserName: o.PrivateRegistryUserName,
-		PrivateRegistryPassword: o.PrivateRegistryPassword,
-		VaultEnv: strings.Join([]string{
-			fmt.Sprintf("VAULT_ADDR=%s", o.VaultAddress),
-			"VAULT_CACERT=/etc/pulcy/vault.crt",
-		}, "\n"),
-		VaultCrt: o.VaultCertificate,
+		ClusterID:      o.ClusterInfo.ID,
+		RebootStrategy: o.RebootStrategy,
 	}
 	return cco
 }
 
-// fleetMetadata creates a valid fleet metadata string for use in cloud-config
-func (o *CreateInstanceOptions) fleetMetadata(isCore bool, instanceIndex int) string {
+// CreateFleetMetadata creates a valid fleet metadata string for use in cloud-config
+func (o *CreateInstanceOptions) CreateFleetMetadata(isCore bool, instanceIndex int) string {
 	list := []string{fmt.Sprintf("region=%s", o.RegionID)}
 	if instanceIndex%2 == 0 {
 		list = append(list, "even=true")
@@ -212,18 +207,10 @@ func (o *CreateInstanceOptions) fleetMetadata(isCore bool, instanceIndex int) st
 
 // Options for cloud-config files
 type CloudConfigOptions struct {
-	ClusterID               string
-	FleetMetadata           string
-	PrivateIPv4             string
-	GluonImage              string
-	SshKeys                 []string
-	RebootStrategy          string
-	PrivateClusterDevice    string
-	PrivateRegistryUrl      string // URL of private docker registry
-	PrivateRegistryUserName string // Username of private docker registry
-	PrivateRegistryPassword string // Password of private docker registry
-	VaultEnv                string // Contents of /etc/pulcy/vault.env
-	VaultCrt                string // Contents of /etc/pulcy/vault.crt
+	ClusterID      string
+	PrivateIPv4    string
+	SshKeys        []string
+	RebootStrategy string
 }
 
 // Validate the given options
