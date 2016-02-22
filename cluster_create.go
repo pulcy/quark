@@ -56,13 +56,15 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
+	provider := newProvider()
+	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
+
+	// Create cluster ID if needed
 	if createClusterFlags.ID == "" {
 		createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
 	} else {
 		createClusterFlags.ID = strings.ToLower(createClusterFlags.ID)
 	}
-	provider := newProvider()
-	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
 
 	// Validate
 	if err := createClusterFlags.Validate(); err != nil {

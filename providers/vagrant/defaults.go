@@ -15,6 +15,8 @@
 package vagrant
 
 import (
+	"os"
+
 	"github.com/pulcy/quark/providers"
 )
 
@@ -30,6 +32,9 @@ func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOpti
 
 // Apply defaults for the given options
 func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	if options.ID == "" {
+		options.ID = os.Getenv("QUARK_VAGRANT_CLUSTER_ID")
+	}
 	if options.Name == "" {
 		options.Name = "vagrant"
 	}
