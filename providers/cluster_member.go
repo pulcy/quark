@@ -19,6 +19,7 @@ import (
 )
 
 type ClusterMember struct {
+	ClusterID string
 	MachineID string
 	PrivateIP string
 	EtcdProxy bool

@@ -51,7 +51,7 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 }
 
 func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
-	log.Info("Fetching cluster-id on %s", i.PublicIpv4)
+	log.Debug("Fetching cluster-id on %s", i.PublicIpv4)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/cluster-id", "", false)
 	return id, maskAny(err)
 }
@@ -126,6 +126,10 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP s
 }
 
 func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, error) {
+	clusterID, err := i.GetClusterID(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
 	machineID, err := i.GetMachineID(log)
 	if err != nil {
 		return ClusterMember{}, maskAny(err)
@@ -135,6 +139,7 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 		return ClusterMember{}, maskAny(err)
 	}
 	return ClusterMember{
+		ClusterID: clusterID,
 		MachineID: machineID,
 		PrivateIP: i.PrivateIpv4,
 		EtcdProxy: etcdProxy,
