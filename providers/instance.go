@@ -125,28 +125,108 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP s
 	return nil
 }
 
+func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, error) {
+	machineID, err := i.GetMachineID(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	etcdProxy, err := i.IsEtcdProxy(log)
+	if err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	return ClusterMember{
+		MachineID: machineID,
+		PrivateIP: i.PrivateIpv4,
+		EtcdProxy: etcdProxy,
+	}, nil
+}
+
 type ClusterMember struct {
 	MachineID string
 	PrivateIP string
 	EtcdProxy bool
 }
 
-// UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
-func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members []ClusterMember) error {
+type ClusterMemberList []ClusterMember
+
+func (cml ClusterMemberList) Render() string {
 	data := ""
-	for _, cm := range members {
+	for _, cm := range cml {
 		proxy := ""
 		if cm.EtcdProxy {
 			proxy = " etcd-proxy"
 		}
 		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.PrivateIP, proxy)
 	}
+	return data
+}
+
+type InitialSetupOptions struct {
+	ClusterMembers ClusterMemberList
+	FleetMetadata  string
+}
+
+// InitialSetup creates initial files and calls gluon for the first time
+func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOptions, iso InitialSetupOptions) error {
 	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
 		return maskAny(err)
 	}
+	data := iso.ClusterMembers.Render()
 	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
 		return maskAny(err)
 	}
+
+	vaultEnv := []string{
+		fmt.Sprintf("VAULT_ADDR=%s", cio.VaultAddress),
+		fmt.Sprintf("VAULT_CACERT=/etc/pulcy/vault.crt"),
+	}
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.env", strings.Join(vaultEnv, "\n"), false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.env", "", false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", cio.VaultCertificate, false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
+		return maskAny(err)
+	}
+
+	log.Info("Downloading gluon on %s", i.PublicIpv4)
+	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /home/core/bin", "", false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("docker run --rm -v /home/core/bin:/destination/ %s", cio.GluonImage), "", false); err != nil {
+		return maskAny(err)
+	}
+	log.Info("Running gluon on %s", i.PublicIpv4)
+	gluonArgs := []string{
+		fmt.Sprintf("--gluon-image=%s", cio.GluonImage),
+		fmt.Sprintf("--docker-ip=%s", i.PrivateIpv4),
+		fmt.Sprintf("--private-ip=%s", i.PrivateIpv4),
+		fmt.Sprintf("--private-cluster-device=%s", i.PrivateClusterDevice),
+		fmt.Sprintf("--private-registry-url=%s", cio.PrivateRegistryUrl),
+		fmt.Sprintf("--private-registry-username=%s", cio.PrivateRegistryUserName),
+		fmt.Sprintf("--private-registry-password=%s", cio.PrivateRegistryPassword),
+		fmt.Sprintf("--fleet-metadata=%s", iso.FleetMetadata),
+	}
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /home/core/bin/gluon setup %s", strings.Join(gluonArgs, " ")), "", false); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+// UpdateClusterMembers updates /etc/pulcy/cluster-members on the given instance
+func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members ClusterMemberList) error {
+	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
+		return maskAny(err)
+	}
+	data := members.Render()
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/cluster-members", data, false); err != nil {
+		return maskAny(err)
+	}
+
 	log.Info("Restarting gluon on %s", i.PublicIpv4)
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo systemctl restart gluon.service"), "", false); err != nil {
 		return maskAny(err)

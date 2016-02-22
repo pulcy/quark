@@ -23,6 +23,8 @@ const (
 	coreosStableID    = "179"
 	plan768MBID       = "29"
 	plan1GBID         = "93"
+
+	privateClusterDevice = "eth1"
 )
 
 // Apply defaults for the given options

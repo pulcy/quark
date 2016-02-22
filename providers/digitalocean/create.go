@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/digitalocean/godo"
+	"github.com/op/go-logging"
 
 	"github.com/pulcy/quark/providers"
 	"github.com/pulcy/quark/templates"
@@ -29,9 +30,16 @@ const (
 	cloudConfigTemplate = "templates/cloud-config.tmpl"
 )
 
-func (dp *doProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+type instanceData struct {
+	CreateInstanceOptions providers.CreateInstanceOptions
+	ClusterInstance       providers.ClusterInstance
+	FleetMetadata         string
+}
+
+func (dp *doProvider) CreateCluster(log *logging.Logger, options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	wg := sync.WaitGroup{}
 	errors := make(chan error, options.InstanceCount)
+	instanceDatas := make(chan instanceData, options.InstanceCount)
 	for i := 1; i <= options.InstanceCount; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -41,11 +49,61 @@ func (dp *doProvider) CreateCluster(options providers.CreateClusterOptions, dnsP
 				errors <- maskAny(err)
 				return
 			}
-			_, err = dp.CreateInstance(instanceOptions, dnsProvider)
+			instance, err := dp.CreateInstance(log, instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
+			} else {
+				instanceDatas <- instanceData{
+					CreateInstanceOptions: instanceOptions,
+					ClusterInstance:       instance,
+					FleetMetadata:         instanceOptions.CreateFleetMetadata(true, i),
+				}
 			}
 		}(i)
+	}
+	wg.Wait()
+	close(errors)
+	close(instanceDatas)
+	err := <-errors
+	if err != nil {
+		return maskAny(err)
+	}
+
+	instances := []instanceData{}
+	instanceList := providers.ClusterInstanceList{}
+	for data := range instanceDatas {
+		instances = append(instances, data)
+		instanceList = append(instanceList, data.ClusterInstance)
+	}
+
+	clusterMembers, err := instanceList.AsClusterMemberList(log, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+
+	if err := dp.setupInstances(log, instances, clusterMembers); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
+}
+
+func (dp *doProvider) setupInstances(log *logging.Logger, instances []instanceData, clusterMembers providers.ClusterMemberList) error {
+	wg := sync.WaitGroup{}
+	errors := make(chan error, len(instances))
+	for _, instance := range instances {
+		wg.Add(1)
+		go func(instance instanceData) {
+			defer wg.Done()
+			iso := providers.InitialSetupOptions{
+				ClusterMembers: clusterMembers,
+				FleetMetadata:  instance.FleetMetadata,
+			}
+			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
+				errors <- maskAny(err)
+				return
+			}
+		}(instance)
 	}
 	wg.Wait()
 	close(errors)
@@ -57,7 +115,7 @@ func (dp *doProvider) CreateCluster(options providers.CreateClusterOptions, dnsP
 	return nil
 }
 
-func (dp *doProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (dp *doProvider) CreateInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	client := NewDOClient(dp.token)
 
 	keys := []godo.DropletCreateSSHKey{}
@@ -75,7 +133,6 @@ func (dp *doProvider) CreateInstance(options providers.CreateInstanceOptions, dn
 
 	opts := options.NewCloudConfigOptions()
 	opts.PrivateIPv4 = "$private_ipv4"
-	opts.PrivateClusterDevice = "eth1"
 
 	cloudConfig, err := templates.Render(cloudConfigTemplate, opts)
 	if err != nil {

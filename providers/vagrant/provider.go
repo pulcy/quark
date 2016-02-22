@@ -77,12 +77,12 @@ func (vp *vagrantProvider) ShowKeys() error {
 }
 
 // Create a machine instance
-func (vp *vagrantProvider) CreateInstance(options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+func (vp *vagrantProvider) CreateInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	return providers.ClusterInstance{}, maskAny(NotImplementedError)
 }
 
 // Create an entire cluster
-func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
+func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.CreateClusterOptions, dnsProvider providers.DnsProvider) error {
 	// Ensure folder exists
 	if err := os.MkdirAll(vp.folder, fileMode|os.ModeDir); err != nil {
 		return maskAny(err)
@@ -145,7 +145,6 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 	opts := instanceOptions.NewCloudConfigOptions()
 	opts.PrivateIPv4 = "$private_ipv4"
 	opts.SshKeys = sshKeys
-	opts.PrivateClusterDevice = "eth1"
 
 	content, err = templates.Render(cloudConfigTemplate, opts)
 	if err != nil {
@@ -165,18 +164,38 @@ func (vp *vagrantProvider) CreateCluster(options providers.CreateClusterOptions,
 		return maskAny(err)
 	}
 
+	// Run initial setup
+	instances, err := vp.GetInstances(providers.ClusterInfo{})
+	if err != nil {
+		return maskAny(err)
+	}
+	clusterMembers, err := instances.AsClusterMemberList(log, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+	for index, instance := range instances {
+		iso := providers.InitialSetupOptions{
+			ClusterMembers: clusterMembers,
+			FleetMetadata:  instanceOptions.CreateFleetMetadata(true, index),
+		}
+		if err := instance.InitialSetup(log, instanceOptions, iso); err != nil {
+			return maskAny(err)
+		}
+	}
+
 	return nil
 }
 
 // Get names of instances of a cluster
-func (vp *vagrantProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
-	instances := []providers.ClusterInstance{}
+func (vp *vagrantProvider) GetInstances(info_ providers.ClusterInfo) (providers.ClusterInstanceList, error) {
+	instances := providers.ClusterInstanceList{}
 	for i := 1; i <= vp.instanceCount; i++ {
 		instances = append(instances, providers.ClusterInstance{
-			Name:        fmt.Sprintf("core-%02d", i),
-			PrivateIpv4: fmt.Sprintf("192.168.33.%d", 100+i),
-			PublicIpv4:  fmt.Sprintf("192.168.33.%d", 100+i),
-			PublicIpv6:  "",
+			Name:                 fmt.Sprintf("core-%02d", i),
+			PrivateIpv4:          fmt.Sprintf("192.168.33.%d", 100+i),
+			PublicIpv4:           fmt.Sprintf("192.168.33.%d", 100+i),
+			PublicIpv6:           "",
+			PrivateClusterDevice: privateClusterDevice,
 		})
 	}
 	return instances, nil

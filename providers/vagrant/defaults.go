@@ -18,6 +18,10 @@ import (
 	"github.com/pulcy/quark/providers"
 )
 
+const (
+	privateClusterDevice = "eth1"
+)
+
 // Apply defaults for the given options
 func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)

@@ -24,18 +24,14 @@ import (
 )
 
 // Get names of instances of a cluster
-func (vp *vultrProvider) GetInstances(info providers.ClusterInfo) ([]providers.ClusterInstance, error) {
+func (vp *vultrProvider) GetInstances(info providers.ClusterInfo) (providers.ClusterInstanceList, error) {
 	servers, err := vp.getInstances(info)
 	if err != nil {
 		return nil, maskAny(err)
 	}
-	list := []providers.ClusterInstance{}
+	list := providers.ClusterInstanceList{}
 	for _, s := range servers {
-		info := providers.ClusterInstance{
-			Name:        s.Name,
-			PrivateIpv4: s.InternalIP,
-			PublicIpv4:  s.MainIP,
-		}
+		info := vp.clusterInstance(s)
 		list = append(list, info)
 
 	}
@@ -62,10 +58,11 @@ func (vp *vultrProvider) getInstances(info providers.ClusterInfo) ([]lib.Server,
 // clusterInstance creates a ClusterInstance record for the given server
 func (dp *vultrProvider) clusterInstance(s lib.Server) providers.ClusterInstance {
 	info := providers.ClusterInstance{
-		Name:        s.Name,
-		PrivateIpv4: s.InternalIP,
-		PublicIpv4:  s.MainIP,
-		PublicIpv6:  s.MainIPV6,
+		Name:                 s.Name,
+		PrivateIpv4:          s.InternalIP,
+		PublicIpv4:           s.MainIP,
+		PublicIpv6:           s.MainIPV6,
+		PrivateClusterDevice: privateClusterDevice,
 	}
 	return info
 }

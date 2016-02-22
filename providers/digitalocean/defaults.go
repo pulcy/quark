@@ -22,6 +22,8 @@ const (
 	defaultRegionID = "ams3"
 	defaultImageID  = "coreos-stable"
 	defaultTypeID   = "512mb"
+
+	privateClusterDevice = "eth1"
 )
 
 // Apply defaults for the given options

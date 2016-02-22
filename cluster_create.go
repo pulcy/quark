@@ -84,7 +84,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
-	err = provider.CreateCluster(createClusterFlags, newDnsProvider())
+	err = provider.CreateCluster(log, createClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new cluster: %v\n", err)
 	}

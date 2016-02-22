@@ -91,7 +91,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	createInstanceFlags.VaultCertificate = vaultCACert
 
 	// Create
-	instance, err := provider.CreateInstance(createInstanceFlags, newDnsProvider())
+	instance, err := provider.CreateInstance(log, createInstanceFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new instance: %v\n", err)
 	}
@@ -107,10 +107,28 @@ func createInstance(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Update existing members
+	// Add new instance to list
+	instances = append(instances, instance)
+
+	// Load cluster-members data
 	isEtcdProxy := func(i providers.ClusterInstance) bool {
 		return createInstanceFlags.EtcdProxy && (i.PrivateIpv4 == instance.PrivateIpv4)
 	}
+	clusterMembers, err := instances.AsClusterMemberList(log, isEtcdProxy)
+	if err != nil {
+		Exitf("Failed to convert instance list to member list: %v\n", err)
+	}
+
+	// Perform initial setup on new instance
+	iso := providers.InitialSetupOptions{
+		ClusterMembers: clusterMembers,
+		FleetMetadata:  createInstanceFlags.CreateFleetMetadata(createInstanceFlags.RoleCore, createInstanceFlags.InstanceIndex),
+	}
+	if err := instance.InitialSetup(log, createInstanceFlags, iso); err != nil {
+		Exitf("Failed to perform initial instance setup: %v\n", err)
+	}
+
+	// Update existing members
 	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
