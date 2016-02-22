@@ -41,10 +41,12 @@ func init() {
 func showInstances(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&instancesFlags, args)
 
+	provider := newProvider()
+	instancesFlags = provider.ClusterDefaults(instancesFlags)
+
 	if instancesFlags.Name == "" {
 		Exitf("Please specify a name\n")
 	}
-	provider := newProvider()
 	instances, err := provider.GetInstances(instancesFlags)
 	if err != nil {
 		Exitf("Failed to list instances: %v\n", err)

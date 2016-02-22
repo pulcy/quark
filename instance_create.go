@@ -51,9 +51,9 @@ func init() {
 func createInstance(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
 
-	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 	provider := newProvider()
-	createInstanceFlags = provider.InstanceDefaults(createInstanceFlags)
+	createInstanceFlags = provider.CreateInstanceDefaults(createInstanceFlags)
+	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
 
 	// Validate
 	if err := createInstanceFlags.Validate(); err != nil {

@@ -25,19 +25,26 @@ const (
 )
 
 // Apply defaults for the given options
-func (vp *vagrantProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
-	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
-	return options
-}
-
-// Apply defaults for the given options
-func (vp *vagrantProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+func (vp *vagrantProvider) ClusterDefaults(options providers.ClusterInfo) providers.ClusterInfo {
 	if options.ID == "" {
 		options.ID = os.Getenv("QUARK_VAGRANT_CLUSTER_ID")
 	}
 	if options.Name == "" {
 		options.Name = "vagrant"
 	}
+	return options
+}
+
+// Apply defaults for the given options
+func (vp *vagrantProvider) CreateInstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
+	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	return options
+}
+
+// Apply defaults for the given options
+func (vp *vagrantProvider) CreateClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	return options
 }

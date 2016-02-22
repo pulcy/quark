@@ -28,13 +28,20 @@ const (
 )
 
 // Apply defaults for the given options
-func (vp *vultrProvider) InstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+func (vp *vultrProvider) ClusterDefaults(options providers.ClusterInfo) providers.ClusterInfo {
+	return options
+}
+
+// Apply defaults for the given options
+func (vp *vultrProvider) CreateInstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
+	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	return options
 }
 
 // Apply defaults for the given options
-func (vp *vultrProvider) ClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+func (vp *vultrProvider) CreateClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
+	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	return options
 }

@@ -44,10 +44,13 @@ type CloudProvider interface {
 	ShowInstanceTypes() error
 
 	// Apply defaults for the given options
-	InstanceDefaults(options CreateInstanceOptions) CreateInstanceOptions
+	ClusterDefaults(options ClusterInfo) ClusterInfo
 
 	// Apply defaults for the given options
-	ClusterDefaults(options CreateClusterOptions) CreateClusterOptions
+	CreateInstanceDefaults(options CreateInstanceOptions) CreateInstanceOptions
+
+	// Apply defaults for the given options
+	CreateClusterDefaults(options CreateClusterOptions) CreateClusterOptions
 
 	// Create a machine instance
 	CreateInstance(log *logging.Logger, options CreateInstanceOptions, dnsProvider DnsProvider) (ClusterInstance, error)

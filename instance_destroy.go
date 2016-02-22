@@ -43,6 +43,9 @@ func init() {
 func destroyInstance(cmd *cobra.Command, args []string) {
 	clusterInstanceInfoFromArgs(&destroyInstanceFlags, args)
 
+	provider := newProvider()
+	destroyInstanceFlags.ClusterInfo = provider.ClusterDefaults(destroyInstanceFlags.ClusterInfo)
+
 	if destroyInstanceFlags.Domain == "" {
 		Exitf("Please specify a domain\n")
 	}
@@ -55,7 +58,6 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	if err := confirm(fmt.Sprintf("Are you sure you want to destroy %s?", destroyInstanceFlags.String())); err != nil {
 		Exitf("%v\n", err)
 	}
-	provider := newProvider()
 
 	/* TODO Remove instance from etcd
 	instances, err := provider.GetInstances(&destroyInstanceFlags.ClusterInfo)
@@ -69,10 +71,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Update existing members
-	isEtcdProxy := func(i providers.ClusterInstance) bool {
-		return false
-	}
-	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
+	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 

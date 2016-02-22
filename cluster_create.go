@@ -57,7 +57,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
 	provider := newProvider()
-	createClusterFlags = provider.ClusterDefaults(createClusterFlags)
+	createClusterFlags = provider.CreateClusterDefaults(createClusterFlags)
 
 	// Create cluster ID if needed
 	if createClusterFlags.ID == "" {
@@ -92,10 +92,7 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Update all members
-	isEtcdProxy := func(i providers.ClusterInstance) bool {
-		return false
-	}
-	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
+	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 

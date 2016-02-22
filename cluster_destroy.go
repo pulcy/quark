@@ -42,6 +42,9 @@ func init() {
 func destroyCluster(cmd *cobra.Command, args []string) {
 	clusterInfoFromArgs(&destroyClusterFlags, args)
 
+	provider := newProvider()
+	destroyClusterFlags = provider.ClusterDefaults(destroyClusterFlags)
+
 	if destroyClusterFlags.Domain == "" {
 		Exitf("Please specify a domain\n")
 	}
@@ -51,7 +54,6 @@ func destroyCluster(cmd *cobra.Command, args []string) {
 	if err := confirm(fmt.Sprintf("Are you sure you want to destroy %s?", destroyClusterFlags.String())); err != nil {
 		Exitf("%v\n", err)
 	}
-	provider := newProvider()
 	err := provider.DeleteCluster(destroyClusterFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to destroy cluster: %v\n", err)
