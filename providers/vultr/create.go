@@ -141,6 +141,7 @@ func (vp *vultrProvider) CreateCluster(log *logging.Logger, options providers.Cr
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
+			time.Sleep(time.Duration((i - 1)) * time.Second * 10)
 			instanceOptions, err := options.NewCreateInstanceOptions(true, i)
 			if err != nil {
 				errors <- maskAny(err)
