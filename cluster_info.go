@@ -47,7 +47,7 @@ func showClusterInfo(cmd *cobra.Command, args []string) {
 	if clusterInfoFlags.Name == "" {
 		Exitf("Please specify a name\n")
 	}
-	instances, err := provider.GetInstances(instancesFlags)
+	instances, err := provider.GetInstances(clusterInfoFlags)
 	if err != nil {
 		Exitf("Failed to list instances: %v\n", err)
 	}
