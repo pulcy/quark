@@ -189,6 +189,11 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 
 // Get names of instances of a cluster
 func (vp *vagrantProvider) GetInstances(info_ providers.ClusterInfo) (providers.ClusterInstanceList, error) {
+	if _, err := os.Stat(filepath.Join(vp.folder, ".vagrant")); os.IsNotExist(err) {
+		// Cluster does not exist
+		return nil, nil
+	}
+
 	instances := providers.ClusterInstanceList{}
 	for i := 1; i <= vp.instanceCount; i++ {
 		instances = append(instances, providers.ClusterInstance{
