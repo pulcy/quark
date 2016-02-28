@@ -20,8 +20,9 @@ import (
 
 const (
 	defaultInstanceCount  = 3
-	defaultGluonImage     = "pulcy/gluon:0.14.5"
+	defaultGluonImage     = "pulcy/gluon:0.14.6"
 	defaultRebootStrategy = "etcd-lock"
+	defaultMinOSVersion   = "835.13.0"
 )
 
 func defaultDomain() string {

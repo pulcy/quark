@@ -19,7 +19,9 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"time"
 
+	"github.com/coreos/go-semver/semver"
 	"github.com/juju/errgo"
 	"github.com/op/go-logging"
 )
@@ -82,6 +84,26 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 		}
 	}
 	return "", maskAny(errgo.New("VAULT_ADDR not found in /etc/pulcy/vault.env"))
+}
+
+func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, error) {
+	const prefix = "DISTRIB_RELEASE="
+	log.Debug("Fetching OS release on %s", i.PublicIpv4)
+	env, err := i.runRemoteCommand(log, "cat /etc/lsb-release", "", false)
+	if err != nil {
+		return semver.Version{}, maskAny(err)
+	}
+	for _, line := range strings.Split(env, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, prefix) {
+			v, err := semver.NewVersion(strings.TrimSpace(line[len(prefix):]))
+			if err != nil {
+				return semver.Version{}, maskAny(err)
+			}
+			return *v, nil
+		}
+	}
+	return semver.Version{}, maskAny(errgo.Newf("%s not found in /etc/lsb-release", prefix))
 }
 
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
@@ -151,8 +173,56 @@ type InitialSetupOptions struct {
 	FleetMetadata  string
 }
 
+func (i ClusterInstance) waitUntilActive(log *logging.Logger) error {
+	for {
+		// Attempt an SSH connection
+		if _, err := i.GetMachineID(log); err == nil {
+			// Success
+			return nil
+		}
+		// Wait a while
+		time.Sleep(time.Second * 5)
+	}
+}
+
+// osSetup updates the OS of the instance (if needed)
+func (i ClusterInstance) osSetup(log *logging.Logger, minOSVersion semver.Version) error {
+	v, err := i.GetOSRelease(log)
+	if err != nil {
+		return maskAny(err)
+	}
+	if !v.LessThan(minOSVersion) {
+		// OS is up to date
+		log.Infof("OS on %s is up to date", i.PublicIpv4)
+		return nil
+	}
+	// Run update
+	log.Infof("Updating OS on %s...", i.PublicIpv4)
+	if _, err := i.runRemoteCommand(log, "sudo update_engine_client -update", "", false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo reboot", "", false); err != nil {
+		// This will likely fail
+		log.Debugf("Reboot failed (likely): %#v", err)
+	}
+	time.Sleep(time.Second * 5)
+	// Wait until available
+	if err := i.waitUntilActive(log); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
 // InitialSetup creates initial files and calls gluon for the first time
 func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOptions, iso InitialSetupOptions) error {
+	minOSVersion, err := semver.NewVersion(cio.MinOSVersion)
+	if err != nil {
+		return maskAny(err)
+	}
+	if err := i.osSetup(log, *minOSVersion); err != nil {
+		return maskAny(err)
+	}
+
 	if _, err := i.runRemoteCommand(log, "sudo /usr/bin/mkdir -p /etc/pulcy", "", false); err != nil {
 		return maskAny(err)
 	}

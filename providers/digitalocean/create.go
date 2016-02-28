@@ -44,7 +44,9 @@ func (dp *doProvider) CreateCluster(log *logging.Logger, options providers.Creat
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			instanceOptions, err := options.NewCreateInstanceOptions(true, i)
+			isCore := true
+			isLB := true
+			instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, i)
 			if err != nil {
 				errors <- maskAny(err)
 				return
@@ -56,7 +58,7 @@ func (dp *doProvider) CreateCluster(log *logging.Logger, options providers.Creat
 				instanceDatas <- instanceData{
 					CreateInstanceOptions: instanceOptions,
 					ClusterInstance:       instance,
-					FleetMetadata:         instanceOptions.CreateFleetMetadata(true, i),
+					FleetMetadata:         instanceOptions.CreateFleetMetadata(i),
 				}
 			}
 		}(i)
@@ -168,7 +170,7 @@ func (dp *doProvider) CreateInstance(log *logging.Logger, options providers.Crea
 
 	publicIpv4 := getIpv4(*droplet, "public")
 	publicIpv6 := getIpv6(*droplet, "public")
-	if err := providers.RegisterInstance(dp.Logger, dnsProvider, options, createDroplet.Name, publicIpv4, publicIpv6); err != nil {
+	if err := providers.RegisterInstance(dp.Logger, dnsProvider, options, createDroplet.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 

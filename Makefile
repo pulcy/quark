@@ -50,6 +50,7 @@ $(GOBUILDDIR):
 update-vendor:
 	@rm -Rf $(VENDORDIR)
 	@pulsar go vendor -V $(VENDORDIR) \
+		github.com/coreos/go-semver \
 		github.com/dchest/uniuri \
 		github.com/digitalocean/godo \
 		github.com/JamesClonk/vultr/lib \

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"sort"
 	"strings"
 
 	"github.com/dchest/uniuri"
@@ -101,9 +102,10 @@ type ClusterInstance struct {
 }
 
 type InstanceConfig struct {
-	ImageID  string // ID of the image to install on each instance
-	RegionID string // ID of the region to run all instances in
-	TypeID   string // ID of the type of each instance
+	ImageID      string // ID of the image to install on each instance
+	RegionID     string // ID of the region to run all instances in
+	TypeID       string // ID of the type of each instance
+	MinOSVersion string
 }
 
 func (ic InstanceConfig) String() string {
@@ -124,11 +126,21 @@ type CreateClusterOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
+
+	instancePrefixes []string
 }
 
 // NewCreateInstanceOptions creates a new CreateInstanceOptions instances with all
 // values inherited from the given CreateClusterOptions
-func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore bool, instanceIndex int) (CreateInstanceOptions, error) {
+func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, instanceIndex int) (CreateInstanceOptions, error) {
+	if len(o.instancePrefixes) == 0 {
+		for i := 0; i < o.InstanceCount; i++ {
+			prefix := strings.ToLower(uniuri.NewLen(6))
+			o.instancePrefixes = append(o.instancePrefixes, prefix)
+		}
+		sort.Strings(o.instancePrefixes)
+	}
+
 	raw, err := ioutil.ReadFile(o.VaultCertificatePath)
 	if err != nil {
 		return CreateInstanceOptions{}, maskAny(err)
@@ -139,6 +151,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore bool, instanceInd
 		InstanceConfig:          o.InstanceConfig,
 		InstanceIndex:           instanceIndex,
 		RoleCore:                isCore,
+		RoleLoadBalancer:        isLB,
 		SSHKeyNames:             o.SSHKeyNames,
 		SSHKeyGithubAccount:     o.SSHKeyGithubAccount,
 		GluonImage:              o.GluonImage,
@@ -149,7 +162,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore bool, instanceInd
 		VaultAddress:            o.VaultAddress,
 		VaultCertificate:        vaultCertificate,
 	}
-	io.SetupNames(o.Name, o.Domain)
+	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
 	return io, nil
 }
 
@@ -161,6 +174,7 @@ type CreateInstanceOptions struct {
 	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
 	InstanceIndex           int      // 0,... used for odd/even metadata
 	RoleCore                bool     // If set, this instance will get `core=true` metadata
+	RoleLoadBalancer        bool     // If set, this instance will get `lb=true` metadata and the instance will be registered under the cluster name in DNS
 	SSHKeyNames             []string // List of names of SSH keys to install
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
@@ -175,8 +189,10 @@ type CreateInstanceOptions struct {
 
 // SetupNames configured the ClusterName and InstanceName of the given options
 // using the given cluster & domain name
-func (o *CreateInstanceOptions) SetupNames(clusterName, domain string) {
-	prefix := strings.ToLower(uniuri.NewLen(8))
+func (o *CreateInstanceOptions) SetupNames(prefix, clusterName, domain string) {
+	if prefix == "" {
+		prefix = strings.ToLower(uniuri.NewLen(6))
+	}
 	o.ClusterName = fmt.Sprintf("%s.%s", clusterName, domain)
 	o.InstanceName = fmt.Sprintf("%s.%s.%s", prefix, clusterName, domain)
 }
@@ -192,15 +208,18 @@ func (o *CreateInstanceOptions) NewCloudConfigOptions() CloudConfigOptions {
 }
 
 // CreateFleetMetadata creates a valid fleet metadata string for use in cloud-config
-func (o *CreateInstanceOptions) CreateFleetMetadata(isCore bool, instanceIndex int) string {
+func (o *CreateInstanceOptions) CreateFleetMetadata(instanceIndex int) string {
 	list := []string{fmt.Sprintf("region=%s", o.RegionID)}
 	if instanceIndex%2 == 0 {
 		list = append(list, "even=true")
 	} else {
 		list = append(list, "odd=true")
 	}
-	if isCore {
+	if o.RoleCore {
 		list = append(list, "core=true")
+	}
+	if o.RoleLoadBalancer {
+		list = append(list, "lb=true")
 	}
 	return strings.Join(list, ",")
 }

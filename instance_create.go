@@ -35,6 +35,7 @@ func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.ImageID, "image", "", "OS image to run on new instances")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RegionID, "region", "", "Region to create the instances in")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TypeID, "type", "", "Type of the new instances")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.MinOSVersion, "min-os-version", defaultMinOSVersion, "Minimum version of the OS")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.PrivateRegistryUrl, "private-registry-url", defaultPrivateRegistryUrl(), "URL of private docker registry")
@@ -44,6 +45,7 @@ func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.SSHKeyGithubAccount, "ssh-key-github-account", defaultSshKeyGithubAccount(), "Github account name used to fetch SSH keys (to add to instances)")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.EtcdProxy, "etcd-proxy", false, "If set, the new instance will be an ETCD proxy")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleCore, "role-core", false, "If set, the new instance will get `core=true` metadata")
+	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleLoadBalancer, "role-lb", false, "If set, the new instance will get `lb=true` metadata and register with cluster name in DNS")
 	cmdCreateInstance.Flags().IntVar(&createInstanceFlags.InstanceIndex, "index", 0, "Used to create `odd=true` or `even=true` metadata")
 	cmdInstance.AddCommand(cmdCreateInstance)
 }
@@ -53,7 +55,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	provider := newProvider()
 	createInstanceFlags = provider.CreateInstanceDefaults(createInstanceFlags)
-	createInstanceFlags.SetupNames(createInstanceFlags.Name, createInstanceFlags.Domain)
+	createInstanceFlags.SetupNames("", createInstanceFlags.Name, createInstanceFlags.Domain)
 
 	// Validate
 	if err := createInstanceFlags.Validate(); err != nil {
@@ -122,7 +124,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	// Perform initial setup on new instance
 	iso := providers.InitialSetupOptions{
 		ClusterMembers: clusterMembers,
-		FleetMetadata:  createInstanceFlags.CreateFleetMetadata(createInstanceFlags.RoleCore, createInstanceFlags.InstanceIndex),
+		FleetMetadata:  createInstanceFlags.CreateFleetMetadata(createInstanceFlags.InstanceIndex),
 	}
 	if err := instance.InitialSetup(log, createInstanceFlags, iso); err != nil {
 		Exitf("Failed to perform initial instance setup: %v\n", err)

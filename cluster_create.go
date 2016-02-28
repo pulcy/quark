@@ -40,6 +40,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.ImageID, "image", "", "OS image to run on new instances")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RegionID, "region", "", "Region to create the instances in")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TypeID, "type", "", "Type of the new instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.MinOSVersion, "min-os-version", defaultMinOSVersion, "Minimum version of the OS")
 	cmdCreateCluster.Flags().IntVar(&createClusterFlags.InstanceCount, "instance-count", defaultInstanceCount, "Number of instances in cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.GluonImage, "gluon-image", defaultGluonImage, "Image containing gluon")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.RebootStrategy, "reboot-strategy", defaultRebootStrategy, "CoreOS reboot strategy")

@@ -48,7 +48,7 @@ func (vp *vultrProvider) CreateInstance(log *logging.Logger, options providers.C
 
 	publicIpv4 := server.MainIP
 	publicIpv6 := server.MainIPV6
-	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, publicIpv4, publicIpv6); err != nil {
+	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
@@ -142,7 +142,9 @@ func (vp *vultrProvider) CreateCluster(log *logging.Logger, options providers.Cr
 		go func(i int) {
 			defer wg.Done()
 			time.Sleep(time.Duration((i - 1)) * time.Second * 10)
-			instanceOptions, err := options.NewCreateInstanceOptions(true, i)
+			isCore := true
+			isLB := true
+			instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, i)
 			if err != nil {
 				errors <- maskAny(err)
 				return
@@ -154,7 +156,7 @@ func (vp *vultrProvider) CreateCluster(log *logging.Logger, options providers.Cr
 				instanceDatas <- instanceData{
 					CreateInstanceOptions: instanceOptions,
 					ClusterInstance:       instance,
-					FleetMetadata:         instanceOptions.CreateFleetMetadata(true, i),
+					FleetMetadata:         instanceOptions.CreateFleetMetadata(i),
 				}
 			}
 		}(i)

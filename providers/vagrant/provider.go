@@ -139,7 +139,9 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 	sshKeys = append(sshKeys, insecureKey)
 
 	// user-data
-	instanceOptions, err := options.NewCreateInstanceOptions(true, 0)
+	isCore := true
+	isLB := true
+	instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, 0)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -177,7 +179,7 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 	for index, instance := range instances {
 		iso := providers.InitialSetupOptions{
 			ClusterMembers: clusterMembers,
-			FleetMetadata:  instanceOptions.CreateFleetMetadata(true, index),
+			FleetMetadata:  instanceOptions.CreateFleetMetadata(index),
 		}
 		if err := instance.InitialSetup(log, instanceOptions, iso); err != nil {
 			return maskAny(err)
