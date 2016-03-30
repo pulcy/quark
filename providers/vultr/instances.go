@@ -57,11 +57,15 @@ func (vp *vultrProvider) getInstances(info providers.ClusterInfo) ([]lib.Server,
 
 // clusterInstance creates a ClusterInstance record for the given server
 func (dp *vultrProvider) clusterInstance(s lib.Server) providers.ClusterInstance {
+	ipv6 := ""
+	if len(s.V6Networks) > 0 {
+		ipv6 = s.V6Networks[0].MainIP
+	}
 	info := providers.ClusterInstance{
 		Name:                 s.Name,
 		PrivateIpv4:          s.InternalIP,
 		PublicIpv4:           s.MainIP,
-		PublicIpv6:           s.MainIPV6,
+		PublicIpv6:           ipv6,
 		PrivateClusterDevice: privateClusterDevice,
 	}
 	return info

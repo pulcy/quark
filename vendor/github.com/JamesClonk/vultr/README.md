@@ -21,11 +21,11 @@ $ export VULTR_API_KEY=87dFbC91rJjkL/18zJEQxS
 * Run it
 ```sh
 $ vultr version
-Client version:         v1.6
+Client version:         v1.7
 Vultr API endpoint:     https://api.vultr.com/
 Vultr API version:      v1
 OS/Arch (client):       linux/amd64
-Go version:             go1.4.1
+Go version:             go1.5.3
 ```
 
 ---
@@ -46,11 +46,11 @@ $ export VULTR_API_KEY=89dFbb91rGjkL/12zJEQxS
 * Run it
 ```sh
 $ vultr version
-Client version:         v1.6
+Client version:         v1.7
 Vultr API endpoint:     https://api.vultr.com/
 Vultr API version:      v1
 OS/Arch (client):       linux/amd64
-Go version:             go1.4.1
+Go version:             go1.5.3
 ```
 
 ---
@@ -149,9 +149,9 @@ IP:                     107.62.131.240
 Netmask:                255.255.254.0
 Gateway:                107.62.131.1
 Internal IP:
-IPv6 IP:
-IPv6 Network:           ::
-IPv6 Network Size:      0
+#1 IPv6 IP:
+#1 IPv6 Network:        ::
+#1 IPv6 Network Size:   0
 Created date:           2015-02-08 12:36:36
 Default password:       sbiecxo8yk!5
 Auto backups:           no
