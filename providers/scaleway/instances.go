@@ -31,7 +31,7 @@ func (vp *scalewayProvider) GetInstances(info providers.ClusterInfo) (providers.
 	}
 	list := providers.ClusterInstanceList{}
 	for _, s := range servers {
-		info := vp.clusterInstance(s)
+		info := vp.clusterInstance(s, false)
 		list = append(list, info)
 
 	}
@@ -58,7 +58,7 @@ func (vp *scalewayProvider) getInstances(info providers.ClusterInfo) ([]api.Scal
 }
 
 // clusterInstance creates a ClusterInstance record for the given server
-func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer) providers.ClusterInstance {
+func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeeded bool) providers.ClusterInstance {
 	publicIPv4 := s.PublicAddress.IP
 	info := providers.ClusterInstance{
 		Name:                 s.Name,
@@ -66,6 +66,10 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer) providers.Clus
 		PublicIpv4:           publicIPv4,
 		PublicIpv6:           "",
 		PrivateClusterDevice: privateClusterDevice,
+		NoCoreOS:             true,
+	}
+	if bootstrapNeeded {
+		info.UserName = "root"
 	}
 	return info
 }

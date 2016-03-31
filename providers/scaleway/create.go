@@ -15,6 +15,7 @@
 package scaleway
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -29,6 +30,9 @@ import (
 const (
 	fileMode            = os.FileMode(0775)
 	cloudConfigTemplate = "templates/cloud-config.tmpl"
+	bootstrapTemplate   = "templates/scaleway-bootstrap.tmpl"
+	volumeType          = "l_ssd"
+	volumeSize          = uint64(50 * 1000 * 1000 * 1000)
 )
 
 // Create a machine instance
@@ -40,20 +44,22 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 	}
 
 	// Wait for the server to be active
-	server, err := vp.waitUntilServerActive(id)
+	server, err := vp.waitUntilServerActive(id, false)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
-	publicIpv4 := server.PublicAddress.IP
-	publicIpv6 := ""
-	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
-		return providers.ClusterInstance{}, maskAny(err)
+	if options.RoleLoadBalancer {
+		publicIpv4 := server.PublicAddress.IP
+		publicIpv6 := ""
+		if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
+			return providers.ClusterInstance{}, maskAny(err)
+		}
 	}
 
-	vp.Logger.Info("Server '%s' is ready", server.Name)
+	vp.Logger.Infof("Server '%s' is ready", server.Name)
 
-	return vp.clusterInstance(server), nil
+	return vp.clusterInstance(server, false), nil
 }
 
 // Create a single server
@@ -74,32 +80,120 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 		return "", maskAny(err)
 	}
 
-	name := options.InstanceName
-	image := options.ImageID
-	dynamicIPRequired := false
-	bootscript := ""
-	opts := api.ScalewayServerDefinition{
-		Name:              name,
-		Image:             &image,
-		Volumes:           map[string]string{},
-		DynamicIPRequired: &dynamicIPRequired,
-		Bootscript:        &bootscript,
-		Tags:              []string{options.ClusterInfo.ID},
-		Organization:      vp.organization,
-		CommercialType:    options.TypeID,
-		PublicIP:          "",
+	var arch string
+	switch options.TypeID[:2] {
+	case "C1":
+		arch = "arm"
+	case "C2", "VC":
+		arch = "x86_64"
 	}
-	id, err := vp.client.PostServer(opts)
+
+	// Find image
+	imageIdentifier, err := vp.client.GetImageID(options.ImageID, arch)
 	if err != nil {
-		vp.Logger.Debug("PostServer failed: %#v", err)
+		vp.Logger.Errorf("GetImageID failed: %#v", err)
 		return "", maskAny(err)
 	}
-	vp.Logger.Info("Created server %s %s\n", id, name)
+
+	name := options.InstanceName
+	image := &imageIdentifier.Identifier
+	dynamicIPRequired := true
+	//bootscript := ""
+
+	volID := ""
+	/*if options.TypeID != commercialTypeVC1 {
+		volDef := api.ScalewayVolumeDefinition{
+			Name:         vp.volumeName(name),
+			Size:         volumeSize,
+			Type:         volumeType,
+			Organization: vp.organization,
+		}
+		volID, err = vp.client.PostVolume(volDef)
+		if err != nil {
+			vp.Logger.Errorf("PostVolume failed: %#v", err)
+			return "", maskAny(err)
+		}
+	}*/
+
+	publicIPIdentifier := ""
+	if options.RoleLoadBalancer {
+		ip, err := vp.getFreeIP()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		publicIPIdentifier = ip.ID
+	}
+
+	opts := api.ScalewayServerDefinition{
+		Name:              name,
+		Image:             image,
+		Volumes:           map[string]string{},
+		DynamicIPRequired: &dynamicIPRequired,
+		//Bootscript:        &bootscript,
+		Tags:           []string{options.ClusterInfo.ID},
+		Organization:   vp.organization,
+		CommercialType: options.TypeID,
+		PublicIP:       publicIPIdentifier,
+	}
+	if volID != "" {
+		opts.Volumes["0"] = volID
+	}
+	vp.Logger.Debugf("Creating server %s: %#v\n", name, opts)
+	id, err := vp.client.PostServer(opts)
+	if err != nil {
+		vp.Logger.Errorf("PostServer failed: %#v", err)
+		// Delete volume
+		if volID != "" {
+			if err := vp.client.DeleteVolume(volID); err != nil {
+				vp.Logger.Errorf("DeleteVolume failed: %#v", err)
+			}
+		}
+		return "", maskAny(err)
+	}
+
+	// Start server
+	if err := vp.client.PostServerAction(id, "poweron"); err != nil {
+		vp.Logger.Errorf("poweron failed: %#v", err)
+		return "", maskAny(err)
+	}
+
+	// Wait until server starts
+	server, err := vp.waitUntilServerActive(id, true)
+	if err != nil {
+		return "", maskAny(err)
+	}
+
+	// Bootstrap
+	bootstrap, err := templates.Render(bootstrapTemplate, nil)
+	if err != nil {
+		return "", maskAny(err)
+	}
+	instance := vp.clusterInstance(server, true)
+	vp.Logger.Infof("Running bootstrap on %s. This may take a while...", server.Name)
+	if err := instance.RunScript(vp.Logger, bootstrap, "/root/pulcy-bootstrap.sh"); err != nil {
+		// Failed expected because of a reboot
+		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
+	}
+	vp.Logger.Infof("Done running bootstrap on %s", server.Name)
+	time.Sleep(time.Second * 5)
+	if _, err := vp.waitUntilServerActive(id, false); err != nil {
+		return "", maskAny(err)
+	}
+
+	vp.Logger.Infof("Created server %s %s\n", id, name)
 
 	return id, nil
 }
 
-func (vp *scalewayProvider) waitUntilServerActive(id string) (api.ScalewayServer, error) {
+func (vp *scalewayProvider) getFreeIP() (api.ScalewayIPDefinition, error) {
+	ip, err := vp.client.NewIP()
+	if err != nil {
+		return api.ScalewayIPDefinition{}, maskAny(err)
+	}
+	return ip.IP, nil
+}
+
+func (vp *scalewayProvider) waitUntilServerActive(id string, bootstrapNeeded bool) (api.ScalewayServer, error) {
 	for {
 		gateway := ""
 		server, err := api.WaitForServerReady(vp.client, id, gateway)
@@ -108,7 +202,7 @@ func (vp *scalewayProvider) waitUntilServerActive(id string) (api.ScalewayServer
 		}
 		if server.State == "running" {
 			// Attempt an SSH connection
-			instance := vp.clusterInstance(*server)
+			instance := vp.clusterInstance(*server, bootstrapNeeded)
 			if _, err := instance.GetMachineID(vp.Logger); err == nil {
 				// Success
 				return *server, nil
@@ -192,6 +286,7 @@ func (vp *scalewayProvider) setupInstances(log *logging.Logger, instances []inst
 				ClusterMembers: clusterMembers,
 				FleetMetadata:  instance.FleetMetadata,
 			}
+
 			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
 				errors <- maskAny(err)
 				return
@@ -206,4 +301,8 @@ func (vp *scalewayProvider) setupInstances(log *logging.Logger, instances []inst
 	}
 
 	return nil
+}
+
+func (vp *scalewayProvider) volumeName(serverName string) string {
+	return fmt.Sprintf("%s-disk", serverName)
 }

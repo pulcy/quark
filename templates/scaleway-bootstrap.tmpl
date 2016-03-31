@@ -1,0 +1,116 @@
+#!/bin/bash
+
+# Fetch environment
+
+SCWIP=$(hostname  -I | awk '{print $1}')
+SCWPUBLIC=$(curl http://v4.myip.ninja)
+METADATA=`curl http://169.254.42.42/conf`
+MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
+CLUSTERID=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=//g')
+echo "COREOS_PRIVATE_IPV4="$SCWIP >>/etc/environment
+echo "COREOS_PUBLIC_IPV4="$SCWPUBLIC >>/etc/environment
+echo "MODEL="$MODEL >>/etc/environment
+mkdir -p /etc/pulcy
+echo $CLUSTERID >>/etc/pulcy/cluster-id
+chmod 0400 /etc/pulcy/cluster-id
+
+# Create machine-id
+rm -f /etc/.regen-machine-id
+MACHINEID=$(uuidgen -r)
+echo ${MACHINEID//-/} > /etc/machine-id
+
+# Create core user
+useradd -d /home/core -G docker -m -U -u 500 -s /bin/bash -p $(uuidgen) core
+mkdir -p /home/core/.ssh
+cp -r /root/.ssh/* /home/core/.ssh/
+chown -R core.core /home/core/.ssh
+chmod -R og-rwx /home/core/.ssh
+echo "core ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+
+# Link utilities
+cd /usr/bin && ln -s /bin/mkdir && ln -s /bin/rmdir
+
+# Fix hosts
+HOST=$(hostname)
+echo "127.0.0.1 ${HOST}" >> /etc/hosts
+
+# Install packages
+apt-get -q update                   \
+ && apt-get --force-yes -y -qq upgrade  \
+ && apt-get --force-yes install -y -q tar \
+ && apt-get clean
+
+# Install Fleet
+FLEETVERSION=v0.11.5
+FLEETFILE=fleet-${FLEETVERSION}-linux-amd64
+cd /root && wget https://github.com/coreos/fleet/releases/download/${FLEETVERSION}/${FLEETFILE}.tar.gz \
+    && tar xzf ${FLEETFILE}.tar.gz \
+    && mv -f ${FLEETFILE}/* /usr/bin/ \
+    && rm -Rf ${FLEETFILE} ${FLEETFILE}.tar.gz
+cat > /etc/systemd/system/fleet.service <<\EOFLEET
+[Unit]
+Description=fleet daemon
+
+After=etcd.service
+After=etcd2.service
+
+Wants=fleet.socket
+After=fleet.socket
+
+[Service]
+Environment=GOMAXPROCS=1
+ExecStart=/usr/bin/fleetd
+Restart=always
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
+EOFLEET
+
+cat > /etc/systemd/system/fleet.socket <<\EOFLEETSOCKET
+[Unit]
+Description=Fleet API Socket
+PartOf=fleet.service
+
+[Socket]
+ListenStream=/var/run/fleet.sock
+EOFLEETSOCKET
+
+# Install Etcd
+ETCDVERSION=v2.3.0
+ETCDFILE=etcd-${ETCDVERSION}-linux-amd64
+cd /usr/src/ && wget https://github.com/coreos/etcd/releases/download/${ETCDVERSION}/${ETCDFILE}.tar.gz \
+    && tar xzf ${ETCDFILE}.tar.gz \
+    && mv -f ${ETCDFILE}/etcd /usr/bin/etcd2 \
+    && mv -f ${ETCDFILE}/* /usr/bin/ \
+    && rm -Rf ${ETCDFILE} ${ETCDFILE}.tar.gz
+useradd --system --no-create-home etcd
+mkdir /var/lib/etcd2
+chown etcd.etcd /var/lib/etcd2
+cat > /etc/systemd/system/etcd2.service <<\EOETCD
+[Unit]
+Description=etcd2
+Conflicts=etcd.service
+
+[Service]
+User=etcd
+Type=notify
+Environment=ETCD_DATA_DIR=/var/lib/etcd2
+Environment=ETCD_NAME=%m
+ExecStart=/usr/bin/etcd2
+Restart=always
+RestartSec=10s
+LimitNOFILE=40000
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
+EOETCD
+
+# Patch rootfs
+systemctl disable docker; systemctl enable docker
+
+# Reboot
+sync
+shutdown -r now
+exit

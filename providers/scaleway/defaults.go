@@ -19,14 +19,14 @@ import (
 )
 
 const (
-	regionParis       = "paris"
-	dockerImageID     = "c1b530d8-0ca0-45c4-80db-ba06608287b2"
+	regionParis       = "fr-1"
+	dockerImageID     = "docker"
 	commercialTypeVC1 = "VC1"
 	commercialTypeC2S = "C2S"
 	commercialTypeC2M = "C2M"
 	commercialTypeC2L = "C2L"
 
-	privateClusterDevice = "eth1"
+	privateClusterDevice = "eth0"
 )
 
 // Apply defaults for the given options
@@ -45,6 +45,9 @@ func (vp *scalewayProvider) CreateInstanceDefaults(options providers.CreateInsta
 func (vp *scalewayProvider) CreateClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
 	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	if options.SSHKeyGithubAccount == "" {
+		options.SSHKeyGithubAccount = "-"
+	}
 	return options
 }
 

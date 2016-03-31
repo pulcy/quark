@@ -15,6 +15,8 @@
 package scaleway
 
 import (
+	"github.com/scaleway/scaleway-cli/pkg/api"
+
 	"github.com/pulcy/quark/providers"
 )
 
@@ -25,16 +27,8 @@ func (vp *scalewayProvider) DeleteCluster(info providers.ClusterInfo, dnsProvide
 		return err
 	}
 	for _, s := range servers {
-		// Delete DNS instance records
-		instance := vp.clusterInstance(s)
-		if err := providers.UnRegisterInstance(vp.Logger, dnsProvider, instance, info.Domain); err != nil {
+		if err := vp.deleteServer(s, dnsProvider, info.Domain); err != nil {
 			return maskAny(err)
-		}
-
-		// Delete droplet
-		err := vp.client.DeleteServer(s.Identifier)
-		if err != nil {
-			return err
 		}
 	}
 
@@ -45,24 +39,61 @@ func (vp *scalewayProvider) DeleteInstance(info providers.ClusterInstanceInfo, d
 	fullName := info.String()
 	servers, err := vp.getInstances(info.ClusterInfo)
 	if err != nil {
-		return err
+		return maskAny(err)
 	}
 	for _, s := range servers {
 		if s.Name == fullName {
-			// Delete DNS instance records
-			instance := vp.clusterInstance(s)
-			if err := providers.UnRegisterInstance(vp.Logger, dnsProvider, instance, info.Domain); err != nil {
+			if err := vp.deleteServer(s, dnsProvider, info.Domain); err != nil {
 				return maskAny(err)
 			}
 
-			// Delete droplet
-			err := vp.client.DeleteServer(s.Identifier)
-			if err != nil {
-				return err
-			}
 			return nil
 		}
 	}
 
 	return maskAny(NotFoundError)
+}
+
+func (vp *scalewayProvider) deleteServer(s api.ScalewayServer, dnsProvider providers.DnsProvider, domain string) error {
+	if s.State == "running" {
+		vp.Logger.Infof("Stopping server %s", s.Name)
+		if err := vp.client.PostServerAction(s.Identifier, "terminate"); err != nil {
+			return maskAny(err)
+		}
+		api.WaitForServerStopped(vp.client, s.Identifier)
+	} else {
+		vp.Logger.Infof("Server %s is at state '%s'", s.Name, s.State)
+	}
+
+	// Delete DNS instance records
+	vp.Logger.Infof("Unregistering DNS for %s", s.Name)
+	instance := vp.clusterInstance(s, false)
+	if err := providers.UnRegisterInstance(vp.Logger, dnsProvider, instance, domain); err != nil {
+		return maskAny(err)
+	}
+
+	// Delete server
+	/*err := vp.client.DeleteServer(s.Identifier)
+	if err != nil {
+		vp.Logger.Errorf("Failed to delete server %s: %#v", s.Name, err)
+		return maskAny(err)
+	}*/
+
+	// Delete volume
+	/*for _, v := range s.Volumes {
+		if err := vp.client.DeleteVolume(v.Identifier); err != nil {
+		vp.Logger.Errorf("Failed to delete volume %s: %#v", v.Identifier, err)
+			return maskAny(err)
+		}
+	}*/
+
+	// Delete IP
+	if !(*s.PublicAddress.Dynamic) {
+		if err := vp.client.DeleteIP(s.PublicAddress.Identifier); err != nil {
+			vp.Logger.Errorf("Failed to delete IP %s: %#v", s.PublicAddress.Identifier, err)
+			return maskAny(err)
+		}
+	}
+
+	return nil
 }

@@ -131,8 +131,13 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Update existing members
-	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, isEtcdProxy, provider); err != nil {
+	if err := providers.UpdateClusterMembers(log, createInstanceFlags.ClusterInfo, false, isEtcdProxy, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
+	}
+
+	// Reboot new instance
+	if err := instance.Reboot(log); err != nil {
+		Exitf("Failed to reboot new instance: %v\n", err)
 	}
 
 	Infof("Instance created\n")

@@ -71,7 +71,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Update existing members
-	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, nil, provider); err != nil {
+	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, false, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 
