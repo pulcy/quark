@@ -1,0 +1,40 @@
+#!/bin/bash
+
+HOST=$(hostname)
+HOST=${HOST//-/_}
+HOSTIP=$(hostname  -I | awk '{print $1}')
+TINCIP=$(cat /etc/pulcy/tinc-ip)
+VPN=pulcy
+SSHOPTS="-o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+sudo apt-get install tinc
+
+sudo mkdir -p /etc/tinc/${VPN}/hosts
+
+echo "Name = ${HOST}" | sudo tee /etc/tinc/${VPN}/tinc.conf
+echo "AddressFamily = ipv4" | sudo tee -a /etc/tinc/${VPN}/tinc.conf
+echo "Interface = tun0" | sudo tee -a /etc/tinc/${VPN}/tinc.conf
+
+echo "Address = ${HOSTIP}" | sudo tee /etc/tinc/${VPN}/hosts/${HOST}
+echo "Subnet = ${TINCIP}/24" | sudo tee -a /etc/tinc/${VPN}/hosts/${HOST}
+
+sudo tincd -n ${VPN} -K4096
+
+echo "#!/bin/sh" | sudo tee /etc/tinc/${VPN}/tinc-up
+echo "ifconfig \$INTERFACE ${TINCIP} netmask 255.255.255.0" | sudo tee -a /etc/tinc/${VPN}/tinc-up
+
+echo "#!/bin/sh" | sudo tee /etc/tinc/${VPN}/tinc-down
+echo "ifconfig \$INTERFACE down" | sudo tee -a /etc/tinc/${VPN}/tinc-down
+
+sudo chmod 755 /etc/tinc/${VPN}/tinc-*
+
+for line in $(cat /etc/pulcy/cluster-members); do
+    OTHERIP=$(echo $line | cut -d '=' -f 2)
+    if [ "${OTHERIP}" != "${HOSTIP}" ]; then
+        echo Copy to ${OTHERIP}
+        ssh $SSHOPTS core@${OTHERIP} mkdir -p /home/core/tinc/${VPN}/hosts/
+        rsync /etc/tinc/${VPN}/hosts/${HOST} core@${OTHERIP}:/home/core/tinc/${VPN}/hosts/
+        ssh $SSHOPTS core@${OTHERIP} sudo mkdir -p /etc/tinc/${VPN}/hosts/
+        ssh $SSHOPTS core@${OTHERIP} sudo mv /home/core/tinc/${VPN}/hosts/${HOST} /etc/tinc/${VPN}/hosts/
+    fi
+done

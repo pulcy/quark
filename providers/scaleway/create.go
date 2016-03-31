@@ -130,7 +130,10 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 		Volumes:           map[string]string{},
 		DynamicIPRequired: &dynamicIPRequired,
 		//Bootscript:        &bootscript,
-		Tags:           []string{options.ClusterInfo.ID},
+		Tags: []string{
+			options.ClusterInfo.ID,
+			options.TincIpv4,
+		},
 		Organization:   vp.organization,
 		CommercialType: options.TypeID,
 		PublicIP:       publicIPIdentifier,

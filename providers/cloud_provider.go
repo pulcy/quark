@@ -30,6 +30,10 @@ var (
 	maskAny = errgo.MaskFunc(errgo.Any)
 )
 
+const (
+	tincAddressTemplate = "192.168.35.%d"
+)
+
 // DnsProvider holds all functions to be implemented by DNS providers
 type DnsProvider interface {
 	ShowDomainRecords(domain string) error
@@ -99,8 +103,14 @@ type ClusterInstance struct {
 	PublicIpv4           string
 	PublicIpv6           string
 	PrivateClusterDevice string
+	TincIpv4             string
 	UserName             string
 	NoCoreOS             bool
+}
+
+// Name of the instance in Tinc
+func (o ClusterInstance) TincName() string {
+	return strings.Replace(strings.Replace(o.Name, ".", "_", -1), "-", "_", -1)
 }
 
 type InstanceConfig struct {
@@ -163,6 +173,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
 		VaultCertificate:        vaultCertificate,
+		TincIpv4:                fmt.Sprintf(tincAddressTemplate, instanceIndex),
 	}
 	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
 	return io, nil
@@ -187,6 +198,7 @@ type CreateInstanceOptions struct {
 	EtcdProxy               bool   // If set, this instance will be an ETCD proxy
 	VaultAddress            string // URL of the vault
 	VaultCertificate        string // Contents of the vault ca-cert
+	TincIpv4                string // IP addres of tun0 (tinc) on this instance
 }
 
 // SetupNames configured the ClusterName and InstanceName of the given options
