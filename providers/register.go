@@ -22,10 +22,10 @@ import (
 
 // RegisterInstance creates DNS records for an instance
 func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerCluster bool, publicIpv4, publicIpv6 string) error {
-	logger.Info("%s: %s: %s", name, publicIpv4, publicIpv6)
+	logger.Infof("%s: %s: %s", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
-	logger.Info("Creating DNS records: '%s', '%s'", options.InstanceName, options.ClusterName)
+	logger.Infof("Creating DNS records: '%s', '%s'", options.InstanceName, options.ClusterName)
 	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 		return maskAny(err)
 	}

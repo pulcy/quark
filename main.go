@@ -26,6 +26,7 @@ import (
 	"github.com/pulcy/quark/providers"
 	"github.com/pulcy/quark/providers/cloudflare"
 	"github.com/pulcy/quark/providers/digitalocean"
+	"github.com/pulcy/quark/providers/scaleway"
 	"github.com/pulcy/quark/providers/vagrant"
 	"github.com/pulcy/quark/providers/vultr"
 )
@@ -48,13 +49,15 @@ var (
 		PersistentPreRun: loadDefaults,
 	}
 
-	provider          string
-	digitalOceanToken string
-	cloudflareApiKey  string
-	cloudflareEmail   string
-	vagrantFolder     string
-	vultrApiKey       string
-	logLevel          string
+	provider             string
+	digitalOceanToken    string
+	cloudflareApiKey     string
+	cloudflareEmail      string
+	scalewayOrganization string
+	scalewayToken        string
+	vagrantFolder        string
+	vultrApiKey          string
+	logLevel             string
 
 	log = logging.MustGetLogger(projectName)
 )
@@ -62,10 +65,12 @@ var (
 func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
 	cmdMain.PersistentFlags().StringVar(&logLevel, "log-level", defaultLogLevel, "Log level (debug|info|warning|error)")
-	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|vagrant|vultr]")
+	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|scaleway|vagrant|vultr]")
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
+	cmdMain.PersistentFlags().StringVarP(&scalewayOrganization, "scaleway-organization", "", "", "Scaleway organization ID")
+	cmdMain.PersistentFlags().StringVarP(&scalewayToken, "scaleway-token", "", "", "Scaleway token")
 	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", defaultVagrantFolder(), "Directory containing vagrant files")
 	cmdMain.PersistentFlags().StringVarP(&vultrApiKey, "vultr-apikey", "", "", "Vultr API key")
 }
@@ -107,6 +112,26 @@ func newProvider() providers.CloudProvider {
 			Exitf("Please specify a token\n")
 		}
 		return digitalocean.NewProvider(log, digitalOceanToken)
+	case "scaleway":
+		if scalewayOrganization == "" || scalewayToken == "" {
+			rc, err := scaleway.ReadRC()
+			if err != nil {
+				Exitf("Cannot read .scwrc: %#v\n", err)
+			}
+			scalewayOrganization = rc.Organization
+			scalewayToken = rc.Token
+		}
+		if scalewayOrganization == "" {
+			Exitf("Please specify a scaleway-organization\n")
+		}
+		if scalewayToken == "" {
+			Exitf("Please specify a scaleway-token\n")
+		}
+		provider, err := scaleway.NewProvider(log, scalewayOrganization, scalewayToken)
+		if err != nil {
+			Exitf("NewProvider failed: %#v\n", err)
+		}
+		return provider
 	case "vagrant":
 		if vagrantFolder == "" {
 			Exitf("Please specify a vagrant-folder\n")

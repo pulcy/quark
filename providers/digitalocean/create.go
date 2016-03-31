@@ -154,15 +154,15 @@ func (dp *doProvider) CreateInstance(log *logging.Logger, options providers.Crea
 	}
 
 	// Create droplet
-	dp.Logger.Info("Creating droplet: %s, %s, %s", request.Region, request.Size, options.ImageID)
-	dp.Logger.Debug(cloudConfig)
+	dp.Logger.Infof("Creating droplet: %s, %s, %s", request.Region, request.Size, options.ImageID)
+	dp.Logger.Debugf(cloudConfig)
 	createDroplet, _, err := client.Droplets.Create(request)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
 	// Wait for active
-	dp.Logger.Info("Waiting for droplet '%s'", createDroplet.Name)
+	dp.Logger.Infof("Waiting for droplet '%s'", createDroplet.Name)
 	droplet, err := dp.waitUntilDropletActive(createDroplet.ID)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
@@ -174,7 +174,7 @@ func (dp *doProvider) CreateInstance(log *logging.Logger, options providers.Crea
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
-	dp.Logger.Info("Droplet '%s' is ready", createDroplet.Name)
+	dp.Logger.Infof("Droplet '%s' is ready", createDroplet.Name)
 
 	return dp.clusterInstance(*droplet), nil
 }

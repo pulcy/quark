@@ -21,7 +21,7 @@ import (
 )
 
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
-func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, isEtcdProxy func(ClusterInstance) bool, provider CloudProvider) error {
+func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, rebootAfter bool, isEtcdProxy func(ClusterInstance) bool, provider CloudProvider) error {
 	// Load all instances
 	instances, err := provider.GetInstances(info)
 	if err != nil {
@@ -35,7 +35,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, isEtcdProxy fun
 	}
 
 	// Call update-member on all instances
-	if instances.UpdateClusterMembers(log, clusterMembers); err != nil {
+	if instances.UpdateClusterMembers(log, clusterMembers, rebootAfter); err != nil {
 		return maskAny(err)
 	}
 
@@ -43,7 +43,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, isEtcdProxy fun
 }
 
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
-func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, clusterMembers ClusterMemberList) error {
+func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, clusterMembers ClusterMemberList, rebootAfter bool) error {
 	// Now update all members in parallel
 	wg := sync.WaitGroup{}
 	errorChannel := make(chan error, len(instances))
@@ -53,6 +53,11 @@ func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, c
 			defer wg.Done()
 			if err := i.UpdateClusterMembers(log, clusterMembers); err != nil {
 				errorChannel <- maskAny(err)
+			}
+			if rebootAfter {
+				if err := i.Reboot(log); err != nil {
+					errorChannel <- maskAny(err)
+				}
 			}
 		}(i)
 	}

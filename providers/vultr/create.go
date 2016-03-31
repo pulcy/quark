@@ -47,12 +47,15 @@ func (vp *vultrProvider) CreateInstance(log *logging.Logger, options providers.C
 	}
 
 	publicIpv4 := server.MainIP
-	publicIpv6 := server.MainIPV6
+	publicIpv6 := ""
+	if len(server.V6Networks) > 0 {
+		publicIpv6 = server.V6Networks[0].MainIP
+	}
 	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
-	vp.Logger.Info("Server '%s' is ready", server.Name)
+	vp.Logger.Infof("Server '%s' is ready", server.Name)
 
 	return vp.clusterInstance(server), nil
 }
@@ -105,10 +108,10 @@ func (vp *vultrProvider) createServer(options providers.CreateInstanceOptions) (
 	}
 	server, err := vp.client.CreateServer(name, regionID, planID, osID, opts)
 	if err != nil {
-		vp.Logger.Debug("CreateServer failed: %#v", err)
+		vp.Logger.Debugf("CreateServer failed: %#v", err)
 		return "", maskAny(err)
 	}
-	vp.Logger.Info("Created server %s %s\n", server.ID, server.Name)
+	vp.Logger.Infof("Created server %s %s\n", server.ID, server.Name)
 
 	return server.ID, nil
 }

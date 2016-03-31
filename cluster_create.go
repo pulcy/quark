@@ -93,7 +93,8 @@ func createCluster(cmd *cobra.Command, args []string) {
 	}
 
 	// Update all members
-	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, nil, provider); err != nil {
+	reboot := true
+	if err := providers.UpdateClusterMembers(log, createClusterFlags.ClusterInfo, reboot, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
 	}
 

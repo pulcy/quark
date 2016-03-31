@@ -326,28 +326,28 @@ func randString(n int) string {
 	return string(b)
 }
 
-var bodyTests = []struct {
-	body         string
-	noContentLen bool
-}{
-	{body: "some message"},
-	{body: "some message", noContentLen: true},
-	{body: ""},
-	{body: "", noContentLen: true},
-	{body: strings.Repeat("a", 1<<20), noContentLen: true},
-	{body: strings.Repeat("a", 1<<20)},
-	{body: randString(16<<10 - 1)},
-	{body: randString(16 << 10)},
-	{body: randString(16<<10 + 1)},
-	{body: randString(512<<10 - 1)},
-	{body: randString(512 << 10)},
-	{body: randString(512<<10 + 1)},
-	{body: randString(1<<20 - 1)},
-	{body: randString(1 << 20)},
-	{body: randString(1<<20 + 2)},
-}
-
 func TestTransportBody(t *testing.T) {
+	bodyTests := []struct {
+		body         string
+		noContentLen bool
+	}{
+		{body: "some message"},
+		{body: "some message", noContentLen: true},
+		{body: ""},
+		{body: "", noContentLen: true},
+		{body: strings.Repeat("a", 1<<20), noContentLen: true},
+		{body: strings.Repeat("a", 1<<20)},
+		{body: randString(16<<10 - 1)},
+		{body: randString(16 << 10)},
+		{body: randString(16<<10 + 1)},
+		{body: randString(512<<10 - 1)},
+		{body: randString(512 << 10)},
+		{body: randString(512<<10 + 1)},
+		{body: randString(1<<20 - 1)},
+		{body: randString(1 << 20)},
+		{body: randString(1<<20 + 2)},
+	}
+
 	type reqInfo struct {
 		req   *http.Request
 		slurp []byte
@@ -1104,7 +1104,7 @@ func TestTransportInvalidTrailer_Pseudo2(t *testing.T) {
 	testTransportInvalidTrailer_Pseudo(t, splitHeader)
 }
 func testTransportInvalidTrailer_Pseudo(t *testing.T, trailers headerType) {
-	testInvalidTrailer(t, trailers, errPseudoTrailers, func(enc *hpack.Encoder) {
+	testInvalidTrailer(t, trailers, pseudoHeaderError(":colon"), func(enc *hpack.Encoder) {
 		enc.WriteField(hpack.HeaderField{Name: ":colon", Value: "foo"})
 		enc.WriteField(hpack.HeaderField{Name: "foo", Value: "bar"})
 	})
@@ -1117,19 +1117,19 @@ func TestTransportInvalidTrailer_Capital2(t *testing.T) {
 	testTransportInvalidTrailer_Capital(t, splitHeader)
 }
 func testTransportInvalidTrailer_Capital(t *testing.T, trailers headerType) {
-	testInvalidTrailer(t, trailers, errInvalidHeaderFieldName, func(enc *hpack.Encoder) {
+	testInvalidTrailer(t, trailers, headerFieldNameError("Capital"), func(enc *hpack.Encoder) {
 		enc.WriteField(hpack.HeaderField{Name: "foo", Value: "bar"})
 		enc.WriteField(hpack.HeaderField{Name: "Capital", Value: "bad"})
 	})
 }
 func TestTransportInvalidTrailer_EmptyFieldName(t *testing.T) {
-	testInvalidTrailer(t, oneHeader, errInvalidHeaderFieldName, func(enc *hpack.Encoder) {
+	testInvalidTrailer(t, oneHeader, headerFieldNameError(""), func(enc *hpack.Encoder) {
 		enc.WriteField(hpack.HeaderField{Name: "", Value: "bad"})
 	})
 }
 func TestTransportInvalidTrailer_BinaryFieldValue(t *testing.T) {
-	testInvalidTrailer(t, oneHeader, errInvalidHeaderFieldValue, func(enc *hpack.Encoder) {
-		enc.WriteField(hpack.HeaderField{Name: "", Value: "has\nnewline"})
+	testInvalidTrailer(t, oneHeader, headerFieldValueError("has\nnewline"), func(enc *hpack.Encoder) {
+		enc.WriteField(hpack.HeaderField{Name: "x", Value: "has\nnewline"})
 	})
 }
 
@@ -1147,7 +1147,7 @@ func testInvalidTrailer(t *testing.T, trailers headerType, wantErr error, writeT
 		}
 		slurp, err := ioutil.ReadAll(res.Body)
 		if err != wantErr {
-			return fmt.Errorf("res.Body ReadAll error = %q, %v; want %v", slurp, err, wantErr)
+			return fmt.Errorf("res.Body ReadAll error = %q, %#v; want %T of %#v", slurp, err, wantErr, wantErr)
 		}
 		if len(slurp) > 0 {
 			return fmt.Errorf("body = %q; want nothing", slurp)
@@ -1659,4 +1659,139 @@ func TestTransportRejectsConnHeaders(t *testing.T) {
 			t.Errorf("For key %q, value %q, got = %q; want %q", tt.key, tt.value, got, tt.want)
 		}
 	}
+}
+
+// Tests that gzipReader doesn't crash on a second Read call following
+// the first Read call's gzip.NewReader returning an error.
+func TestGzipReader_DoubleReadCrash(t *testing.T) {
+	gz := &gzipReader{
+		body: ioutil.NopCloser(strings.NewReader("0123456789")),
+	}
+	var buf [1]byte
+	n, err1 := gz.Read(buf[:])
+	if n != 0 || !strings.Contains(fmt.Sprint(err1), "invalid header") {
+		t.Fatalf("Read = %v, %v; want 0, invalid header", n, err1)
+	}
+	n, err2 := gz.Read(buf[:])
+	if n != 0 || err2 != err1 {
+		t.Fatalf("second Read = %v, %v; want 0, %v", n, err2, err1)
+	}
+}
+
+func TestTransportNewTLSConfig(t *testing.T) {
+	tests := [...]struct {
+		conf *tls.Config
+		host string
+		want *tls.Config
+	}{
+		// Normal case.
+		0: {
+			conf: nil,
+			host: "foo.com",
+			want: &tls.Config{
+				ServerName: "foo.com",
+				NextProtos: []string{NextProtoTLS},
+			},
+		},
+
+		// User-provided name (bar.com) takes precedence:
+		1: {
+			conf: &tls.Config{
+				ServerName: "bar.com",
+			},
+			host: "foo.com",
+			want: &tls.Config{
+				ServerName: "bar.com",
+				NextProtos: []string{NextProtoTLS},
+			},
+		},
+
+		// NextProto is prepended:
+		2: {
+			conf: &tls.Config{
+				NextProtos: []string{"foo", "bar"},
+			},
+			host: "example.com",
+			want: &tls.Config{
+				ServerName: "example.com",
+				NextProtos: []string{NextProtoTLS, "foo", "bar"},
+			},
+		},
+
+		// NextProto is not duplicated:
+		3: {
+			conf: &tls.Config{
+				NextProtos: []string{"foo", "bar", NextProtoTLS},
+			},
+			host: "example.com",
+			want: &tls.Config{
+				ServerName: "example.com",
+				NextProtos: []string{"foo", "bar", NextProtoTLS},
+			},
+		},
+	}
+	for i, tt := range tests {
+		tr := &Transport{TLSClientConfig: tt.conf}
+		got := tr.newTLSConfig(tt.host)
+		if !reflect.DeepEqual(got, tt.want) {
+			t.Errorf("%d. got %#v; want %#v", i, got, tt.want)
+		}
+	}
+}
+
+// The Google GFE responds to HEAD requests with a HEADERS frame
+// without END_STREAM, followed by a 0-length DATA frame with
+// END_STREAM. Make sure we don't get confused by that. (We did.)
+func TestTransportReadHeadResponse(t *testing.T) {
+	ct := newClientTester(t)
+	clientDone := make(chan struct{})
+	ct.client = func() error {
+		defer close(clientDone)
+		req, _ := http.NewRequest("HEAD", "https://dummy.tld/", nil)
+		res, err := ct.tr.RoundTrip(req)
+		if err != nil {
+			return err
+		}
+		if res.ContentLength != 123 {
+			return fmt.Errorf("Content-Length = %d; want 123", res.ContentLength)
+		}
+		slurp, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("ReadAll: %v", err)
+		}
+		if len(slurp) > 0 {
+			return fmt.Errorf("Unexpected non-empty ReadAll body: %q", slurp)
+		}
+		return nil
+	}
+	ct.server = func() error {
+		ct.greet()
+		for {
+			f, err := ct.fr.ReadFrame()
+			if err != nil {
+				t.Logf("ReadFrame: %v", err)
+				return nil
+			}
+			hf, ok := f.(*HeadersFrame)
+			if !ok {
+				continue
+			}
+			var buf bytes.Buffer
+			enc := hpack.NewEncoder(&buf)
+			enc.WriteField(hpack.HeaderField{Name: ":status", Value: "200"})
+			enc.WriteField(hpack.HeaderField{Name: "content-length", Value: "123"})
+			ct.fr.WriteHeaders(HeadersFrameParam{
+				StreamID:      hf.StreamID,
+				EndHeaders:    true,
+				EndStream:     false, // as the GFE does
+				BlockFragment: buf.Bytes(),
+			})
+			ct.fr.WriteData(hf.StreamID, true, nil)
+
+			<-clientDone
+			return nil
+		}
+		return nil
+	}
+	ct.run()
 }

@@ -99,6 +99,8 @@ type ClusterInstance struct {
 	PublicIpv4           string
 	PublicIpv6           string
 	PrivateClusterDevice string
+	UserName             string
+	NoCoreOS             bool
 }
 
 type InstanceConfig struct {
