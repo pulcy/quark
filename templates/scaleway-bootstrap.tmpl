@@ -20,7 +20,7 @@ MACHINEID=$(uuidgen -r)
 echo ${MACHINEID//-/} > /etc/machine-id
 
 # Create core user
-useradd -d /home/core -G docker -m -U -u 500 -s /bin/bash -p $(uuidgen) core
+useradd -d /home/core -G docker,systemd-journal -m -U -u 500 -s /bin/bash -p $(uuidgen) core
 mkdir -p /home/core/.ssh
 cp -r /root/.ssh/* /home/core/.ssh/
 chown -R core.core /home/core/.ssh
