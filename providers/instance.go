@@ -350,7 +350,7 @@ func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members Clust
 	}
 
 	log.Infof("Enabling services on %s", i)
-	services := []string{"etcd2.service", "fleet.service", "fleet.socket"}
+	services := []string{"etcd2.service", "fleet.service", "fleet.socket", "ip4tables.service", "ip6tables.service"}
 	for _, service := range services {
 		if err := i.EnableService(log, service); err != nil {
 			return maskAny(err)

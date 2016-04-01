@@ -20,7 +20,7 @@ import (
 
 const (
 	defaultInstanceCount  = 3
-	defaultGluonImage     = "pulcy/gluon:0.14.6"
+	defaultGluonImage     = "pulcy/gluon:0.14.7"
 	defaultRebootStrategy = "etcd-lock"
 	defaultMinOSVersion   = "835.13.0"
 )
