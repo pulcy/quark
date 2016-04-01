@@ -65,7 +65,7 @@ func showInstances(cmd *cobra.Command, args []string) {
 			options = append(options, "etcd-proxy")
 		}
 		lbIP := strings.TrimSpace(i.LoadBalancerIPv4 + " " + i.LoadBalancerIPv6)
-		lines = append(lines, fmt.Sprintf("%s | %s | %s | %s | %s", i.Name, i.ClusterIP, lbIP, i.PrivateIP, cm.MachineID, strings.Join(options, ",")))
+		lines = append(lines, fmt.Sprintf("%s | %s | %s | %s | %s | %s", i.Name, i.ClusterIP, lbIP, i.PrivateIP, cm.MachineID, strings.Join(options, ",")))
 	}
 	result := columnize.SimpleFormat(lines)
 	fmt.Println(result)
