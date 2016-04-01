@@ -72,6 +72,9 @@ type CloudProvider interface {
 	// Remove a single instance of a cluster
 	DeleteInstance(info ClusterInstanceInfo, dnsProvider DnsProvider) error
 
+	// Perform a reboot of the given instance
+	RebootInstance(instance ClusterInstance) error
+
 	ShowDomainRecords(domain string) error
 }
 
@@ -94,23 +97,6 @@ type ClusterInstanceInfo struct {
 
 func (cii ClusterInstanceInfo) String() string {
 	return fmt.Sprintf("%s.%s.%s", cii.Prefix, cii.Name, cii.Domain)
-}
-
-// ClusterInstance describes a single instance
-type ClusterInstance struct {
-	Name                 string
-	PrivateIpv4          string
-	PublicIpv4           string
-	PublicIpv6           string
-	PrivateClusterDevice string
-	TincIpv4             string
-	UserName             string
-	NoCoreOS             bool
-}
-
-// Name of the instance in Tinc
-func (o ClusterInstance) TincName() string {
-	return strings.Replace(strings.Replace(o.Name, ".", "_", -1), "-", "_", -1)
 }
 
 type InstanceConfig struct {

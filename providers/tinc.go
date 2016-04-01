@@ -23,7 +23,7 @@ import (
 	"github.com/op/go-logging"
 )
 
-// UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
+// ReconfigureTincCluster creates the tinc configuration on all instances of the given cluster.
 func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
 	// Load all instances
 	instances, err := provider.GetInstances(info)
@@ -39,7 +39,7 @@ func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider Clou
 	return nil
 }
 
-// UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
+// ReconfigureTincCluster creates the tinc configuration on all given instances.
 func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger) error {
 	// Now update all members in parallel
 	vpnName := "pulcy"
@@ -49,7 +49,7 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger)
 		wg.Add(1)
 		go func(i ClusterInstance) {
 			defer wg.Done()
-			if err := i.configureTincHost(log, vpnName, instances); err != nil {
+			if err := configureTincHost(log, i, vpnName, instances); err != nil {
 				errorChannel <- maskAny(err)
 			}
 		}(i)
@@ -60,8 +60,8 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger)
 		return maskAny(err)
 	}
 
-	for _, x := range instances {
-		if err := x.distributeTincHosts(log, vpnName, instances); err != nil {
+	for _, i := range instances {
+		if err := distributeTincHosts(log, i, vpnName, instances); err != nil {
 			return maskAny(err)
 		}
 	}
@@ -69,23 +69,23 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger)
 	return nil
 }
 
-func (i ClusterInstance) configureTincHost(log *logging.Logger, vpnName string, instances ClusterInstanceList) error {
+func configureTincHost(log *logging.Logger, i ClusterInstance, vpnName string, instances ClusterInstanceList) error {
 	connectTo := []string{}
 	for _, x := range instances {
 		if x.Name != i.Name {
-			connectTo = append(connectTo, x.PrivateIpv4)
+			connectTo = append(connectTo, tincName(x))
 		}
 	}
-	if err := i.CreateTincConf(log, vpnName, connectTo); err != nil {
+	if err := createTincConf(log, i, vpnName, connectTo); err != nil {
 		return maskAny(err)
 	}
-	if err := i.CreateTincHostConf(log, vpnName); err != nil {
+	if err := createTincHostsConf(log, i, vpnName); err != nil {
 		return maskAny(err)
 	}
-	if err := i.CreateTincScripts(log, vpnName); err != nil {
+	if err := createTincScripts(log, i, vpnName); err != nil {
 		return maskAny(err)
 	}
-	if err := i.CreateTincService(log, vpnName); err != nil {
+	if err := createTincService(log, i, vpnName); err != nil {
 		return maskAny(err)
 	}
 	//Create key
@@ -95,14 +95,20 @@ func (i ClusterInstance) configureTincHost(log *logging.Logger, vpnName string, 
 	return nil
 }
 
-func (i ClusterInstance) distributeTincHosts(log *logging.Logger, vpnName string, instances ClusterInstanceList) error {
-	conf, err := i.GetTincHostConf(log, vpnName)
+// tincName creates the name of the instance in Tinc
+func tincName(i ClusterInstance) string {
+	return strings.Replace(strings.Replace(i.Name, ".", "_", -1), "-", "_", -1)
+}
+
+func distributeTincHosts(log *logging.Logger, i ClusterInstance, vpnName string, instances ClusterInstanceList) error {
+	conf, err := getTincHostsConf(log, i, vpnName)
 	if err != nil {
 		return maskAny(err)
 	}
+	tincName := tincName(i)
 	for _, x := range instances {
 		if x.Name != i.Name {
-			err := i.SetTincHostConf(log, vpnName, i.TincName(), conf)
+			err := setTincHostsConf(log, x, vpnName, tincName, conf)
 			if err != nil {
 				return maskAny(err)
 			}
@@ -111,22 +117,10 @@ func (i ClusterInstance) distributeTincHosts(log *logging.Logger, vpnName string
 	return nil
 }
 
-func (i ClusterInstance) GetTincIP(log *logging.Logger) (string, error) {
-	log.Debugf("Fetching tinc-ip on %s", i.PublicIpv4)
-	id, err := i.runRemoteCommand(log, "cat /etc/pulcy/tinc-ip", "", false)
-	return id, maskAny(err)
-}
-
-func (i ClusterInstance) SetTincIP(log *logging.Logger) (string, error) {
-	log.Debugf("Writing tinc-ip on %s", i.PublicIpv4)
-	id, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/tinc-ip", i.TincIpv4, false)
-	return id, maskAny(err)
-}
-
-// CreateTincConf creates a tinc.conf for the host of the given instance
-func (i ClusterInstance) CreateTincConf(log *logging.Logger, vpnName string, connectTo []string) error {
+// createTincConf creates a tinc.conf for the host of the given instance
+func createTincConf(log *logging.Logger, i ClusterInstance, vpnName string, connectTo []string) error {
 	lines := []string{
-		fmt.Sprintf("Name = %s", i.TincName()),
+		fmt.Sprintf("Name = %s", tincName(i)),
 		"AddressFamily = ipv4",
 		"Interface = tun0",
 	}
@@ -135,7 +129,7 @@ func (i ClusterInstance) CreateTincConf(log *logging.Logger, vpnName string, con
 	}
 	confDir := path.Join("/etc/tinc", vpnName)
 	confPath := path.Join(confDir, "tinc.conf")
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir %s", confDir), "", false); err != nil {
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir -p %s", confDir), "", false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", confPath), strings.Join(lines, "\n"), false); err != nil {
@@ -144,15 +138,15 @@ func (i ClusterInstance) CreateTincConf(log *logging.Logger, vpnName string, con
 	return nil
 }
 
-// CreateTincConf creates a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
-func (i ClusterInstance) CreateTincHostConf(log *logging.Logger, vpnName string) error {
+// createTincHostsConf creates a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
+func createTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName string) error {
 	lines := []string{
-		fmt.Sprintf("Address = %s", i.PrivateIpv4),
-		fmt.Sprintf("Subnet = %s/32", i.TincIpv4),
+		fmt.Sprintf("Address = %s", i.PrivateIP),
+		fmt.Sprintf("Subnet = %s/32", i.ClusterIP),
 	}
 	confDir := path.Join("/etc/tinc", vpnName, "hosts")
-	confPath := path.Join(confDir, i.TincName())
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir %s", confDir), "", false); err != nil {
+	confPath := path.Join(confDir, tincName(i))
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir -p %s", confDir), "", false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", confPath), strings.Join(lines, "\n"), false); err != nil {
@@ -161,11 +155,11 @@ func (i ClusterInstance) CreateTincHostConf(log *logging.Logger, vpnName string)
 	return nil
 }
 
-// CreateTincScripts creates a /etc/tinc/<vpnName>/tinc-up|down for the host of the given instance
-func (i ClusterInstance) CreateTincScripts(log *logging.Logger, vpnName string) error {
+// createTincScripts creates a /etc/tinc/<vpnName>/tinc-up|down for the host of the given instance
+func createTincScripts(log *logging.Logger, i ClusterInstance, vpnName string) error {
 	upLines := []string{
 		"#!/bin/sh",
-		fmt.Sprintf("ifconfig $INTERFACE %s netmask 255.255.255.0", i.TincIpv4),
+		fmt.Sprintf("ifconfig $INTERFACE %s netmask 255.255.255.0", i.ClusterIP),
 	}
 	downLines := []string{
 		"#!/bin/sh",
@@ -174,7 +168,7 @@ func (i ClusterInstance) CreateTincScripts(log *logging.Logger, vpnName string) 
 	confDir := path.Join("/etc/tinc", vpnName)
 	upPath := path.Join(confDir, "tinc-up")
 	downPath := path.Join(confDir, "tinc-down")
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir %s", confDir), "", false); err != nil {
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir -p %s", confDir), "", false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", upPath), strings.Join(upLines, "\n"), false); err != nil {
@@ -189,10 +183,10 @@ func (i ClusterInstance) CreateTincScripts(log *logging.Logger, vpnName string) 
 	return nil
 }
 
-// GetTincHostConf reads a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
-func (i ClusterInstance) GetTincHostConf(log *logging.Logger, vpnName string) (string, error) {
+// getTincHostsConf reads a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
+func getTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName string) (string, error) {
 	confDir := path.Join("/etc/tinc", vpnName, "hosts")
-	confPath := path.Join(confDir, i.TincName())
+	confPath := path.Join(confDir, tincName(i))
 	content, err := i.runRemoteCommand(log, "cat "+confPath, "", false)
 	if err != nil {
 		return "", maskAny(err)
@@ -200,11 +194,11 @@ func (i ClusterInstance) GetTincHostConf(log *logging.Logger, vpnName string) (s
 	return content, nil
 }
 
-// SetTincHostConf creates a /etc/tinc/<vpnName>/hosts/<hostName> from the given content
-func (i ClusterInstance) SetTincHostConf(log *logging.Logger, vpnName, tincName, content string) error {
+// setTincHostsConf creates a /etc/tinc/<vpnName>/hosts/<hostName> from the given content
+func setTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName, tincName, content string) error {
 	confDir := path.Join("/etc/tinc", vpnName, "hosts")
 	confPath := path.Join(confDir, tincName)
-	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir %s", confDir), "", false); err != nil {
+	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir -p %s", confDir), "", false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", confPath), content, false); err != nil {
@@ -213,8 +207,8 @@ func (i ClusterInstance) SetTincHostConf(log *logging.Logger, vpnName, tincName,
 	return nil
 }
 
-// CreateTincConf creates a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
-func (i ClusterInstance) CreateTincService(log *logging.Logger, vpnName string) error {
+// createTincService creates /etc/systemd/system/tinc.service on the given instance
+func createTincService(log *logging.Logger, i ClusterInstance, vpnName string) error {
 	lines := []string{
 		"[Unit]",
 		fmt.Sprintf("Description=tinc for network %s", vpnName),

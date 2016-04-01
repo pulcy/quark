@@ -31,6 +31,38 @@ const (
 	defaultUsername = "core"
 )
 
+// OSName specifies a name of an OS
+type OSName string
+
+const (
+	OSNameCoreOS OSName = "coreos"
+	OSNameUbuntu OSName = "ubuntu"
+)
+
+// ClusterInstance describes a single instance
+type ClusterInstance struct {
+	ID               string // Provider specific ID of the server (only used by provider, can be empty)
+	Name             string // Name of the instance as known by the provider
+	ClusterIP        string // IP address of the instance used for all private communication in the cluster
+	LoadBalancerIPv4 string // IPv4 address of the instance on which the load-balancer is listening (can be empty)
+	LoadBalancerIPv6 string // IPv6 address of the instance on which the load-balancer is listening (can be empty)
+	ClusterDevice    string // Device name of the nic that is configured for the ClusterIP
+	PrivateIP        string // IP address of the instance's private network (can be same as ClusterIP)
+	UserName         string // Account name used to SSH into this instance. (empty defaults to 'core')
+	OS               OSName // Name of the OS on the instance
+}
+
+// String returns a human readable representation of the given instance
+func (i ClusterInstance) String() string {
+	if i.LoadBalancerIPv4 != "" {
+		return i.LoadBalancerIPv4
+	}
+	if i.LoadBalancerIPv6 != "" {
+		return i.LoadBalancerIPv6
+	}
+	return i.Name
+}
+
 // User returns the standard username of this instance
 func (i ClusterInstance) User() string {
 	if i.UserName == "" {
@@ -50,7 +82,14 @@ func (i ClusterInstance) Home() string {
 }
 
 func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin string, quiet bool) (string, error) {
-	cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking=no", i.User()+"@"+i.PublicIpv4, command)
+	hostAddress := i.LoadBalancerIPv4
+	if hostAddress == "" {
+		hostAddress = i.LoadBalancerIPv6
+	}
+	if hostAddress == "" {
+		return "", maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
+	}
+	cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking=no", i.User()+"@"+hostAddress, command)
 	var stdOut, stdErr bytes.Buffer
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
@@ -72,26 +111,26 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 }
 
 func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
-	log.Debugf("Fetching cluster-id on %s", i.PublicIpv4)
+	log.Debugf("Fetching cluster-id on %s", i)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/cluster-id", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetMachineID(log *logging.Logger) (string, error) {
-	log.Debugf("Fetching machine-id on %s", i.PublicIpv4)
+	log.Debugf("Fetching machine-id on %s", i)
 	id, err := i.runRemoteCommand(log, "cat /etc/machine-id", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultCrt(log *logging.Logger) (string, error) {
-	log.Debugf("Fetching vault.crt on %s", i.PublicIpv4)
+	log.Debugf("Fetching vault.crt on %s", i)
 	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.crt", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 	const prefix = "VAULT_ADDR="
-	log.Debugf("Fetching vault-addr on %s", i.PublicIpv4)
+	log.Debugf("Fetching vault-addr on %s", i)
 	env, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/vault.env", "", false)
 	if err != nil {
 		return "", maskAny(err)
@@ -107,7 +146,7 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 
 func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, error) {
 	const prefix = "DISTRIB_RELEASE="
-	log.Debugf("Fetching OS release on %s", i.PublicIpv4)
+	log.Debugf("Fetching OS release on %s", i)
 	env, err := i.runRemoteCommand(log, "cat /etc/lsb-release", "", false)
 	if err != nil {
 		return semver.Version{}, maskAny(err)
@@ -126,20 +165,20 @@ func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, erro
 }
 
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
-	log.Debugf("Fetching etcd proxy status on %s", i.PublicIpv4)
+	log.Debugf("Fetching etcd proxy status on %s", i)
 	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)
 	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
 }
 
 // AddEtcdMember calls etcdctl to add a member to ETCD
-func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, privateIP string) error {
-	log.Infof("Adding %s(%s) to etcd on %s", name, privateIP, i.PublicIpv4)
+func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, clusterIP string) error {
+	log.Infof("Adding %s(%s) to etcd on %s", name, clusterIP, i)
 	cmd := []string{
 		"etcdctl",
 		"member",
 		"add",
 		name,
-		fmt.Sprintf("http://%s:2380", privateIP),
+		fmt.Sprintf("http://%s:2380", clusterIP),
 	}
 	if _, err := i.runRemoteCommand(log, strings.Join(cmd, " "), "", false); err != nil {
 		return maskAny(err)
@@ -148,9 +187,9 @@ func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, privateIP stri
 }
 
 // RemoveEtcdMember calls etcdctl to remove a member from ETCD
-func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, privateIP string) error {
-	log.Infof("Removing %s(%s) from etcd on %s", name, privateIP, i.PublicIpv4)
-	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1'", privateIP), "", false)
+func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, clusterIP string) error {
+	log.Infof("Removing %s(%s) from etcd on %s", name, clusterIP, i)
+	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1'", clusterIP), "", false)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -182,7 +221,7 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 	return ClusterMember{
 		ClusterID: clusterID,
 		MachineID: machineID,
-		PrivateIP: i.PrivateIpv4,
+		ClusterIP: i.ClusterIP,
 		EtcdProxy: etcdProxy,
 	}, nil
 }
@@ -205,23 +244,23 @@ func (i ClusterInstance) waitUntilActive(log *logging.Logger) error {
 }
 
 // osSetup updates the OS of the instance (if needed)
-func (i ClusterInstance) osSetup(log *logging.Logger, minOSVersion semver.Version) error {
+func (i ClusterInstance) osSetup(log *logging.Logger, minOSVersion semver.Version, provider CloudProvider) error {
 	v, err := i.GetOSRelease(log)
 	if err != nil {
 		return maskAny(err)
 	}
 	if !v.LessThan(minOSVersion) {
 		// OS is up to date
-		log.Infof("OS on %s is up to date", i.PublicIpv4)
+		log.Infof("OS on %s is up to date", i)
 		return nil
 	}
 	// Run update
-	log.Infof("Updating OS on %s...", i.PublicIpv4)
+	log.Infof("Updating OS on %s...", i)
 	if _, err := i.runRemoteCommand(log, "sudo update_engine_client -update", "", false); err != nil {
 		return maskAny(err)
 	}
-	if _, err := i.runRemoteCommand(log, "sudo -b shutdown -r now", "", false); err != nil {
-		// This will likely fail
+	if err := provider.RebootInstance(i); err != nil {
+		// This may likely fail
 		log.Debugf("Reboot failed (likely): %#v", err)
 	}
 	time.Sleep(time.Second * 5)
@@ -233,13 +272,13 @@ func (i ClusterInstance) osSetup(log *logging.Logger, minOSVersion semver.Versio
 }
 
 // InitialSetup creates initial files and calls gluon for the first time
-func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOptions, iso InitialSetupOptions) error {
-	if !i.NoCoreOS {
+func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOptions, iso InitialSetupOptions, provider CloudProvider) error {
+	if i.OS == OSNameCoreOS {
 		minOSVersion, err := semver.NewVersion(cio.MinOSVersion)
 		if err != nil {
 			return maskAny(err)
 		}
-		if err := i.osSetup(log, *minOSVersion); err != nil {
+		if err := i.osSetup(log, *minOSVersion, provider); err != nil {
 			return maskAny(err)
 		}
 	}
@@ -269,7 +308,7 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		return maskAny(err)
 	}
 
-	log.Infof("Downloading gluon on %s", i.PublicIpv4)
+	log.Infof("Downloading gluon on %s", i)
 	binDir := path.Join(i.Home(), "bin")
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo /usr/bin/mkdir -p %s", binDir), "", false); err != nil {
 		return maskAny(err)
@@ -277,12 +316,12 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("docker run --rm -v %s:/destination/ %s", binDir, cio.GluonImage), "", false); err != nil {
 		return maskAny(err)
 	}
-	log.Infof("Running gluon on %s", i.PublicIpv4)
+	log.Infof("Running gluon on %s", i)
 	gluonArgs := []string{
 		fmt.Sprintf("--gluon-image=%s", cio.GluonImage),
-		fmt.Sprintf("--docker-ip=%s", i.PrivateIpv4),
-		fmt.Sprintf("--private-ip=%s", i.PrivateIpv4),
-		fmt.Sprintf("--private-cluster-device=%s", i.PrivateClusterDevice),
+		fmt.Sprintf("--docker-ip=%s", i.ClusterIP),
+		fmt.Sprintf("--private-ip=%s", i.ClusterIP),
+		fmt.Sprintf("--private-cluster-device=%s", i.ClusterDevice),
 		fmt.Sprintf("--private-registry-url=%s", cio.PrivateRegistryUrl),
 		fmt.Sprintf("--private-registry-username=%s", cio.PrivateRegistryUserName),
 		fmt.Sprintf("--private-registry-password=%s", cio.PrivateRegistryPassword),
@@ -305,12 +344,12 @@ func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members Clust
 		return maskAny(err)
 	}
 
-	log.Infof("Restarting gluon on %s", i.PublicIpv4)
+	log.Infof("Restarting gluon on %s", i)
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo systemctl restart gluon.service"), "", false); err != nil {
 		return maskAny(err)
 	}
 
-	log.Infof("Enabling services on %s", i.PublicIpv4)
+	log.Infof("Enabling services on %s", i)
 	services := []string{"etcd2.service", "fleet.service", "fleet.socket"}
 	for _, service := range services {
 		if err := i.EnableService(log, service); err != nil {
@@ -320,16 +359,21 @@ func (i ClusterInstance) UpdateClusterMembers(log *logging.Logger, members Clust
 	return nil
 }
 
-// Reboot reboots the instance
-func (i ClusterInstance) Reboot(log *logging.Logger) error {
+// Sync the filesystems on the instance
+func (i ClusterInstance) Sync(log *logging.Logger) error {
 	if _, err := i.runRemoteCommand(log, "sudo sync", "", false); err != nil {
 		return maskAny(err)
 	}
-	if _, err := i.runRemoteCommand(log, "sudo reboot -f", "", false); err != nil {
-		// This will likely fail
-		log.Debugf("Reboot failed (likely): %#v", err)
-	}
 	return nil
+}
+
+// Exec executes a command on the instance
+func (i ClusterInstance) Exec(log *logging.Logger, command string) (string, error) {
+	stdout, err := i.runRemoteCommand(log, command, "", false)
+	if err != nil {
+		return stdout, maskAny(err)
+	}
+	return stdout, nil
 }
 
 // EnableService calls `systemctl enable <name>`

@@ -22,16 +22,18 @@ import (
 
 // RegisterInstance creates DNS records for an instance
 func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerCluster bool, publicIpv4, publicIpv6 string) error {
-	logger.Infof("%s: %s: %s", name, publicIpv4, publicIpv6)
+	logger.Infof("%s: '%s': '%s'", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
 	logger.Infof("Creating DNS records: '%s', '%s'", options.InstanceName, options.ClusterName)
-	if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
-		return maskAny(err)
-	}
-	if registerCluster {
-		if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
+	if publicIpv4 != "" {
+		if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
 			return maskAny(err)
+		}
+		if registerCluster {
+			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
+				return maskAny(err)
+			}
 		}
 	}
 	if publicIpv6 != "" {
@@ -61,11 +63,15 @@ func UnRegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, instanc
 	// Delete DNS cluster records
 	parts := strings.Split(instance.Name, ".")
 	clusterName := strings.Join(parts[1:], ".")
-	if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName, instance.PublicIpv4); err != nil {
-		return maskAny(err)
+	if instance.LoadBalancerIPv4 != "" {
+		if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName, instance.LoadBalancerIPv4); err != nil {
+			return maskAny(err)
+		}
 	}
-	if err := dnsProvider.DeleteDnsRecord(domain, "AAAA", clusterName, instance.PublicIpv6); err != nil {
-		return maskAny(err)
+	if instance.LoadBalancerIPv6 != "" {
+		if err := dnsProvider.DeleteDnsRecord(domain, "AAAA", clusterName, instance.LoadBalancerIPv6); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	return nil

@@ -25,20 +25,20 @@ import (
 
 // Get names of instances of a cluster
 func (vp *scalewayProvider) GetInstances(info providers.ClusterInfo) (providers.ClusterInstanceList, error) {
-	servers, err := vp.getInstances(info)
+	servers, err := vp.getServers(info)
 	if err != nil {
 		return nil, maskAny(err)
 	}
 	list := providers.ClusterInstanceList{}
 	for _, s := range servers {
-		info := vp.clusterInstance(s, false)
-		list = append(list, info)
+		instance := vp.clusterInstance(s, false)
+		list = append(list, instance)
 
 	}
 	return list, nil
 }
 
-func (vp *scalewayProvider) getInstances(info providers.ClusterInfo) ([]api.ScalewayServer, error) {
+func (vp *scalewayProvider) getServers(info providers.ClusterInfo) ([]api.ScalewayServer, error) {
 	all := true
 	limit := 999
 	servers, err := vp.client.GetServers(all, limit)
@@ -61,12 +61,14 @@ func (vp *scalewayProvider) getInstances(info providers.ClusterInfo) ([]api.Scal
 func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeeded bool) providers.ClusterInstance {
 	publicIPv4 := s.PublicAddress.IP
 	info := providers.ClusterInstance{
-		Name:                 s.Name,
-		PrivateIpv4:          s.PrivateIP,
-		PublicIpv4:           publicIPv4,
-		PublicIpv6:           "",
-		PrivateClusterDevice: privateClusterDevice,
-		NoCoreOS:             true,
+		ID:               s.Identifier,
+		Name:             s.Name,
+		ClusterIP:        s.Tags[clusterIPTagIndex],
+		PrivateIP:        s.PrivateIP,
+		LoadBalancerIPv4: publicIPv4,
+		LoadBalancerIPv6: "",
+		ClusterDevice:    privateClusterDevice,
+		OS:               providers.OSNameUbuntu,
 	}
 	if bootstrapNeeded {
 		info.UserName = "root"

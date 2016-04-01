@@ -35,7 +35,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, rebootAfter boo
 	}
 
 	// Call update-member on all instances
-	if instances.UpdateClusterMembers(log, clusterMembers, rebootAfter); err != nil {
+	if instances.UpdateClusterMembers(log, clusterMembers, rebootAfter, provider); err != nil {
 		return maskAny(err)
 	}
 
@@ -43,7 +43,7 @@ func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, rebootAfter boo
 }
 
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
-func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, clusterMembers ClusterMemberList, rebootAfter bool) error {
+func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, clusterMembers ClusterMemberList, rebootAfter bool, provider CloudProvider) error {
 	// Now update all members in parallel
 	wg := sync.WaitGroup{}
 	errorChannel := make(chan error, len(instances))
@@ -55,7 +55,7 @@ func (instances ClusterInstanceList) UpdateClusterMembers(log *logging.Logger, c
 				errorChannel <- maskAny(err)
 			}
 			if rebootAfter {
-				if err := i.Reboot(log); err != nil {
+				if err := provider.RebootInstance(i); err != nil {
 					errorChannel <- maskAny(err)
 				}
 			}

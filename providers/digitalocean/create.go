@@ -101,7 +101,7 @@ func (dp *doProvider) setupInstances(log *logging.Logger, instances []instanceDa
 				ClusterMembers: clusterMembers,
 				FleetMetadata:  instance.FleetMetadata,
 			}
-			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
+			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso, dp); err != nil {
 				errors <- maskAny(err)
 				return
 			}

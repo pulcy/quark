@@ -22,7 +22,7 @@ import (
 
 // Remove all instances of a cluster
 func (vp *scalewayProvider) DeleteCluster(info providers.ClusterInfo, dnsProvider providers.DnsProvider) error {
-	servers, err := vp.getInstances(info)
+	servers, err := vp.getServers(info)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func (vp *scalewayProvider) DeleteCluster(info providers.ClusterInfo, dnsProvide
 
 func (vp *scalewayProvider) DeleteInstance(info providers.ClusterInstanceInfo, dnsProvider providers.DnsProvider) error {
 	fullName := info.String()
-	servers, err := vp.getInstances(info.ClusterInfo)
+	servers, err := vp.getServers(info.ClusterInfo)
 	if err != nil {
 		return maskAny(err)
 	}

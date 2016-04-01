@@ -115,7 +115,5 @@ EOETCD
 # Patch rootfs
 systemctl disable docker; systemctl enable docker
 
-# Reboot
+# Prepare for reboot
 sync
-shutdown -r now
-exit

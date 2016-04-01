@@ -104,7 +104,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 		if err != nil {
 			Exitf("Failed to get machine ID: %v\n", err)
 		}
-		if err := instances[0].AddEtcdMember(log, newMachineID, instance.PrivateIpv4); err != nil {
+		if err := instances[0].AddEtcdMember(log, newMachineID, instance.ClusterIP); err != nil {
 			Exitf("Failed to add new instance to etcd: %v\n", err)
 		}
 	}
@@ -114,7 +114,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Load cluster-members data
 	isEtcdProxy := func(i providers.ClusterInstance) bool {
-		return createInstanceFlags.EtcdProxy && (i.PrivateIpv4 == instance.PrivateIpv4)
+		return createInstanceFlags.EtcdProxy && (i.ClusterIP == instance.ClusterIP)
 	}
 	clusterMembers, err := instances.AsClusterMemberList(log, isEtcdProxy)
 	if err != nil {
@@ -126,7 +126,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 		ClusterMembers: clusterMembers,
 		FleetMetadata:  createInstanceFlags.CreateFleetMetadata(createInstanceFlags.InstanceIndex),
 	}
-	if err := instance.InitialSetup(log, createInstanceFlags, iso); err != nil {
+	if err := instance.InitialSetup(log, createInstanceFlags, iso, provider); err != nil {
 		Exitf("Failed to perform initial instance setup: %v\n", err)
 	}
 
@@ -136,7 +136,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Reboot new instance
-	if err := instance.Reboot(log); err != nil {
+	if err := provider.RebootInstance(instance); err != nil {
 		Exitf("Failed to reboot new instance: %v\n", err)
 	}
 

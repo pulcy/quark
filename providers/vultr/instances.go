@@ -62,11 +62,13 @@ func (dp *vultrProvider) clusterInstance(s lib.Server) providers.ClusterInstance
 		ipv6 = s.V6Networks[0].MainIP
 	}
 	info := providers.ClusterInstance{
-		Name:                 s.Name,
-		PrivateIpv4:          s.InternalIP,
-		PublicIpv4:           s.MainIP,
-		PublicIpv6:           ipv6,
-		PrivateClusterDevice: privateClusterDevice,
+		Name:             s.Name,
+		ClusterIP:        s.InternalIP,
+		PrivateIP:        s.InternalIP,
+		LoadBalancerIPv4: s.MainIP,
+		LoadBalancerIPv6: ipv6,
+		ClusterDevice:    privateClusterDevice,
+		OS:               providers.OSNameCoreOS,
 	}
 	return info
 }

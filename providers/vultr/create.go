@@ -208,7 +208,7 @@ func (vp *vultrProvider) setupInstances(log *logging.Logger, instances []instanc
 				ClusterMembers: clusterMembers,
 				FleetMetadata:  instance.FleetMetadata,
 			}
-			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
+			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso, vp); err != nil {
 				errors <- maskAny(err)
 				return
 			}
