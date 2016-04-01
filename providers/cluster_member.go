@@ -19,10 +19,10 @@ import (
 )
 
 type ClusterMember struct {
-	ClusterID string
-	MachineID string
-	PrivateIP string
-	EtcdProxy bool
+	ClusterID string // ID of the cluster this is a member of (/etc/pulcu/cluster-id)
+	MachineID string // ID of the machine (/etc/machine-id)
+	ClusterIP string // IP address of the instance used for all private communication in the cluster
+	EtcdProxy bool   // If set, this member is an ETCD proxy
 }
 
 type ClusterMemberList []ClusterMember
@@ -34,14 +34,14 @@ func (cml ClusterMemberList) Render() string {
 		if cm.EtcdProxy {
 			proxy = " etcd-proxy"
 		}
-		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.PrivateIP, proxy)
+		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.ClusterIP, proxy)
 	}
 	return data
 }
 
 func (cml ClusterMemberList) Find(instance ClusterInstance) (ClusterMember, error) {
 	for _, cm := range cml {
-		if cm.PrivateIP == instance.PrivateIpv4 {
+		if cm.ClusterIP == instance.ClusterIP {
 			return cm, nil
 		}
 	}

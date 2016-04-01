@@ -181,7 +181,7 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 			ClusterMembers: clusterMembers,
 			FleetMetadata:  instanceOptions.CreateFleetMetadata(index),
 		}
-		if err := instance.InitialSetup(log, instanceOptions, iso); err != nil {
+		if err := instance.InitialSetup(log, instanceOptions, iso, vp); err != nil {
 			return maskAny(err)
 		}
 	}
@@ -199,11 +199,13 @@ func (vp *vagrantProvider) GetInstances(info_ providers.ClusterInfo) (providers.
 	instances := providers.ClusterInstanceList{}
 	for i := 1; i <= vp.instanceCount; i++ {
 		instances = append(instances, providers.ClusterInstance{
-			Name:                 fmt.Sprintf("core-%02d", i),
-			PrivateIpv4:          fmt.Sprintf("192.168.33.%d", 100+i),
-			PublicIpv4:           fmt.Sprintf("192.168.33.%d", 100+i),
-			PublicIpv6:           "",
-			PrivateClusterDevice: privateClusterDevice,
+			Name:             fmt.Sprintf("core-%02d", i),
+			ClusterIP:        fmt.Sprintf("192.168.33.%d", 100+i),
+			PrivateIP:        fmt.Sprintf("192.168.33.%d", 100+i),
+			LoadBalancerIPv4: fmt.Sprintf("192.168.33.%d", 100+i),
+			LoadBalancerIPv6: "",
+			ClusterDevice:    privateClusterDevice,
+			OS:               providers.OSNameCoreOS,
 		})
 	}
 	return instances, nil
@@ -232,4 +234,12 @@ func (vp *vagrantProvider) DeleteInstance(info providers.ClusterInstanceInfo, dn
 
 func (vp *vagrantProvider) ShowDomainRecords(domain string) error {
 	return maskAny(NotImplementedError)
+}
+
+// Perform a reboot of the given instance
+func (vp *vagrantProvider) RebootInstance(instance providers.ClusterInstance) error {
+	if _, err := instance.Exec(vp.Logger, "sudo shutdown -r now"); err != nil {
+		return maskAny(err)
+	}
+	return nil
 }

@@ -7,12 +7,15 @@ SCWPUBLIC=$(curl http://v4.myip.ninja)
 METADATA=`curl http://169.254.42.42/conf`
 MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
 CLUSTERID=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=//g')
-echo "COREOS_PRIVATE_IPV4="$SCWIP >>/etc/environment
+TINCIP=$(echo "$METADATA" | egrep TAGS_1= | sed 's/TAGS_1=//g')
+echo "HOST_PRIVATE_IPV4="$SCWIP >>/etc/environment
+echo "COREOS_PRIVATE_IPV4="$TINCIP >>/etc/environment
 echo "COREOS_PUBLIC_IPV4="$SCWPUBLIC >>/etc/environment
 echo "MODEL="$MODEL >>/etc/environment
 mkdir -p /etc/pulcy
-echo $CLUSTERID >>/etc/pulcy/cluster-id
+echo $CLUSTERID >/etc/pulcy/cluster-id
 chmod 0400 /etc/pulcy/cluster-id
+echo $TINCIP >/etc/pulcy/tinc-ip
 
 # Create machine-id
 rm -f /etc/.regen-machine-id
@@ -29,6 +32,8 @@ echo "core ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Link utilities
 cd /usr/bin && ln -s /bin/mkdir && ln -s /bin/rmdir
+cd /usr/sbin && ln -s /sbin/iptables-save && ln -s /sbin/iptables-restore && ln -s /sbin/iptables
+cd /usr/sbin && ln -s /sbin/ip6tables-save && ln -s /sbin/ip6tables-restore && ln -s /sbin/ip6tables
 
 # Fix hosts
 HOST=$(hostname)
@@ -37,7 +42,7 @@ echo "127.0.0.1 ${HOST}" >> /etc/hosts
 # Install packages
 apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
- && apt-get --force-yes install -y -q tar \
+ && apt-get --force-yes install -y -q tar tinc \
  && apt-get clean
 
 # Install Fleet
@@ -110,7 +115,5 @@ EOETCD
 # Patch rootfs
 systemctl disable docker; systemctl enable docker
 
-# Reboot
+# Prepare for reboot
 sync
-shutdown -r now
-exit

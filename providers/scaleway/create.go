@@ -15,7 +15,6 @@
 package scaleway
 
 import (
-	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -33,6 +32,9 @@ const (
 	bootstrapTemplate   = "templates/scaleway-bootstrap.tmpl"
 	volumeType          = "l_ssd"
 	volumeSize          = uint64(50 * 1000 * 1000 * 1000)
+
+	clusterIDTagIndex = 0 // Index in ScalewayServer.Tags of the cluster-ID
+	clusterIPTagIndex = 1 // Index in ScalewayServer.Tags of the cluster IP address (tinc address)
 )
 
 // Create a machine instance
@@ -130,7 +132,10 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 		Volumes:           map[string]string{},
 		DynamicIPRequired: &dynamicIPRequired,
 		//Bootscript:        &bootscript,
-		Tags:           []string{options.ClusterInfo.ID},
+		Tags: []string{
+			options.ClusterInfo.ID,
+			options.TincIpv4,
+		},
 		Organization:   vp.organization,
 		CommercialType: options.TypeID,
 		PublicIP:       publicIPIdentifier,
@@ -174,7 +179,12 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 		// Failed expected because of a reboot
 		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
 	}
-	vp.Logger.Infof("Done running bootstrap on %s", server.Name)
+
+	vp.Logger.Infof("Done running bootstrap on %s, rebooting...", server.Name)
+	if err := vp.client.PostServerAction(id, "reboot"); err != nil {
+		vp.Logger.Errorf("reboot failed: %#v", err)
+		return "", maskAny(err)
+	}
 	time.Sleep(time.Second * 5)
 	if _, err := vp.waitUntilServerActive(id, false); err != nil {
 		return "", maskAny(err)
@@ -262,6 +272,11 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 		return maskAny(err)
 	}
 
+	// Create tinc network config
+	if instanceList.ReconfigureTincCluster(vp.Logger); err != nil {
+		return maskAny(err)
+	}
+
 	if err := vp.setupInstances(log, instances, clusterMembers); err != nil {
 		return maskAny(err)
 	}
@@ -287,7 +302,7 @@ func (vp *scalewayProvider) setupInstances(log *logging.Logger, instances []inst
 				FleetMetadata:  instance.FleetMetadata,
 			}
 
-			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso); err != nil {
+			if err := instance.ClusterInstance.InitialSetup(log, instance.CreateInstanceOptions, iso, vp); err != nil {
 				errors <- maskAny(err)
 				return
 			}
@@ -301,8 +316,4 @@ func (vp *scalewayProvider) setupInstances(log *logging.Logger, instances []inst
 	}
 
 	return nil
-}
-
-func (vp *scalewayProvider) volumeName(serverName string) string {
-	return fmt.Sprintf("%s-disk", serverName)
 }

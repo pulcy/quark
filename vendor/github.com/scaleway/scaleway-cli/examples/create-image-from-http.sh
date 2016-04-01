@@ -17,7 +17,7 @@ NAME=$(basename "${URL}")
 SNAPSHOT_NAME=${NAME%.*}-$(date +%Y-%m-%d_%H:%M)
 IMAGE_NAME=${IMAGE_NAME:-$SNAPSHOT_NAME}
 IMAGE_BOOTSCRIPT=${IMAGE_BOOTSCRIPT:stable}
-SCW_COMMERCIAL_TYPE=${SCW_COMMERCIAL_TYPE:-VC1}
+SCW_COMMERCIAL_TYPE=${SCW_COMMERCIAL_TYPE:-VC1S}
 VOLUME_SIZE=${VOLUME_SIZE:-50GB}
 SCW_TARGET_ARCH=x86_64
 if [ "$SCW_COMMERCIAL_TYPE" = "C1" ]; then
@@ -30,7 +30,7 @@ echo "[+] Target name: ${NAME}"
 
 
 echo "[+] Creating new server in rescue mode with a secondary volume..."
-SERVER=$(SCW_TARGET_ARCH="$SCW_TARGET_ARCH" SCW_COMMERCIAL_TYPE="$SCW_COMMERCIAL_TYPE" scw run -d --env="AUTHORIZED_KEY=${KEY} boot=none INITRD_DROPBEAR=1" --name="image-writer-${NAME}" "${VOLUME_SIZE}")
+SERVER=$(SCW_TARGET_ARCH="$SCW_TARGET_ARCH" scw run --commercial-type="${SCW_COMMERCIAL_TYPE}" -d --env="AUTHORIZED_KEY=${KEY} boot=none INITRD_DROPBEAR=1" --name="image-writer-${NAME}" "${VOLUME_SIZE}")
 echo "[+] Server created: ${SERVER}"
 
 

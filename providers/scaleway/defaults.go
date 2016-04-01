@@ -21,12 +21,12 @@ import (
 const (
 	regionParis       = "fr-1"
 	dockerImageID     = "docker"
-	commercialTypeVC1 = "VC1"
+	commercialTypeVC1 = "VC1S"
 	commercialTypeC2S = "C2S"
 	commercialTypeC2M = "C2M"
 	commercialTypeC2L = "C2L"
 
-	privateClusterDevice = "eth0"
+	privateClusterDevice = "tun0"
 )
 
 // Apply defaults for the given options

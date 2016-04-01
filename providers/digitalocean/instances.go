@@ -57,11 +57,13 @@ func (dp *doProvider) getInstances(info providers.ClusterInfo) ([]godo.Droplet, 
 // clusterInstance creates a ClusterInstance record for the given droplet
 func (dp *doProvider) clusterInstance(d godo.Droplet) providers.ClusterInstance {
 	info := providers.ClusterInstance{
-		Name:                 d.Name,
-		PrivateIpv4:          getIpv4(d, "private"),
-		PublicIpv4:           getIpv4(d, "public"),
-		PublicIpv6:           getIpv6(d, "public"),
-		PrivateClusterDevice: privateClusterDevice,
+		Name:             d.Name,
+		ClusterIP:        getIpv4(d, "private"),
+		PrivateIP:        getIpv4(d, "private"),
+		LoadBalancerIPv4: getIpv4(d, "public"),
+		LoadBalancerIPv6: getIpv6(d, "public"),
+		ClusterDevice:    privateClusterDevice,
+		OS:               providers.OSNameCoreOS,
 	}
 	return info
 }
