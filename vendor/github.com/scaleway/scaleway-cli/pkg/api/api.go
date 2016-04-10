@@ -60,8 +60,6 @@ type ScalewayAPI struct {
 	// Token is the authentication token for the Scaleway organization
 	Token string
 
-	verbose bool
-
 	// Password is the authentication password
 	password string
 
@@ -70,10 +68,9 @@ type ScalewayAPI struct {
 	// Cache is used to quickly resolve identifiers from names
 	Cache *ScalewayCache
 
-	client *http.Client
-	// Used when switching from an API to another
-	oldTransport *http.RoundTripper
-	anonuuid     anonuuid.AnonUUID
+	client   *http.Client
+	anonuuid anonuuid.AnonUUID
+	verbose  bool
 }
 
 // ScalewayAPIError represents a Scaleway API Error
@@ -304,7 +301,6 @@ type ScalewaySnapshots struct {
 // ScalewayBootscript represents a Scaleway Bootscript
 type ScalewayBootscript struct {
 	Bootcmdargs string `json:"bootcmdargs,omitempty"`
-	Default     bool   `json:"default,omitempty"`
 	Dtb         string `json:"dtb,omitempty"`
 	Initrd      string `json:"initrd,omitempty"`
 	Kernel      string `json:"kernel,omitempty"`
@@ -318,11 +314,13 @@ type ScalewayBootscript struct {
 	// Organization is the owner of the bootscript
 	Organization string `json:"organization,omitempty"`
 
+	// Name is a user-defined name for the bootscript
+	Title string `json:"title,omitempty"`
+
 	// Public is true for public bootscripts and false for user bootscripts
 	Public bool `json:"public,omitempty"`
 
-	// Name is a user-defined name for the bootscript
-	Title string `json:"title,omitempty"`
+	Default bool `json:"default,omitempty"`
 }
 
 // ScalewayOneBootscript represents the response of a GET /bootscripts/UUID API call
@@ -402,12 +400,12 @@ type ScalewayNewSecurityGroupRule struct {
 // ScalewaySecurityGroups definition
 type ScalewaySecurityGroups struct {
 	Description           string                  `json:"description"`
-	EnableDefaultSecurity bool                    `json:"enable_default_security"`
 	ID                    string                  `json:"id"`
 	Organization          string                  `json:"organization"`
 	Name                  string                  `json:"name"`
-	OrganizationDefault   bool                    `json:"organization_default"`
 	Servers               []ScalewaySecurityGroup `json:"servers"`
+	EnableDefaultSecurity bool                    `json:"enable_default_security"`
+	OrganizationDefault   bool                    `json:"organization_default"`
 }
 
 // ScalewayGetSecurityGroups represents the response of a GET /security_groups/
@@ -523,6 +521,17 @@ type ScalewayServer struct {
 		Blade      string `json:"blade_id,omitempty"`
 		Node       string `json:"node_id,omitempty"`
 	} `json:"location,omitempty"`
+
+	IPV6 *ScalewayIPV6Definition `json:"ipv6,omitempty"`
+
+	EnableIPV6 bool `json:"enable_ipv6,omitempty"`
+}
+
+// ScalewayIPV6Definition represents a Scaleway ipv6
+type ScalewayIPV6Definition struct {
+	Netmask string `json:"netmask"`
+	Gateway string `json:"gateway"`
+	Address string `json:"address"`
 }
 
 // ScalewayServerPatchDefinition represents a Scaleway server with nullable fields (for PATCH)
@@ -543,6 +552,8 @@ type ScalewayServerPatchDefinition struct {
 	SecurityGroup     *ScalewaySecurityGroup     `json:"security_group,omitempty"`
 	Organization      *string                    `json:"organization,omitempty"`
 	Tags              *[]string                  `json:"tags,omitempty"`
+	IPV6              *ScalewayIPV6Definition    `json:"ipv6,omitempty"`
+	EnableIPV6        *bool                      `json:"enable_ipv6,omitempty"`
 }
 
 // ScalewayServerDefinition represents a Scaleway server with image definition
@@ -572,6 +583,8 @@ type ScalewayServerDefinition struct {
 	CommercialType string `json:"commercial_type"`
 
 	PublicIP string `json:"public_ip,omitempty"`
+
+	EnableIPV6 bool `json:"enable_ipv6,omitempty"`
 }
 
 // ScalewayOneServer represents the response of a GET /servers/UUID API call
@@ -1246,7 +1259,7 @@ func (s *ScalewayAPI) PostImage(volumeID string, name string, bootscript string,
 		return "", err
 	}
 	// FIXME region, arch, owner, title
-	s.Cache.InsertImage(image.Image.Identifier, "fr-1", image.Image.Arch, image.Image.Organization, image.Image.Name)
+	s.Cache.InsertImage(image.Image.Identifier, "fr-1", image.Image.Arch, image.Image.Organization, image.Image.Name, "")
 	return image.Image.Identifier, nil
 }
 
@@ -1365,7 +1378,7 @@ func (s *ScalewayAPI) GetImages() (*[]MarketImage, error) {
 				if version.ID == image.CurrentPublicVersion {
 					for _, localImage := range version.LocalImages {
 						images.Images[i].Public = true
-						s.Cache.InsertImage(localImage.ID, localImage.Zone, localImage.Arch, image.Organization.ID, image.Name)
+						s.Cache.InsertImage(localImage.ID, localImage.Zone, localImage.Arch, image.Organization.ID, image.Name, image.CurrentPublicVersion)
 					}
 				}
 			}
@@ -1385,7 +1398,7 @@ func (s *ScalewayAPI) GetImages() (*[]MarketImage, error) {
 		return nil, err
 	}
 	for _, orgaImage := range OrgaImages.Images {
-		s.Cache.InsertImage(orgaImage.Identifier, "fr-1", orgaImage.Arch, orgaImage.Organization, orgaImage.Name)
+		s.Cache.InsertImage(orgaImage.Identifier, "fr-1", orgaImage.Arch, orgaImage.Organization, orgaImage.Name, "")
 		images.Images = append(images.Images, MarketImage{
 			Categories:           []string{"MyImages"},
 			CreationDate:         orgaImage.CreationDate,
@@ -1436,7 +1449,7 @@ func (s *ScalewayAPI) GetImage(imageID string) (*ScalewayImage, error) {
 		return nil, err
 	}
 	// FIXME region, arch, owner, title
-	s.Cache.InsertImage(oneImage.Image.Identifier, "fr-1", oneImage.Image.Arch, oneImage.Image.Organization, oneImage.Image.Name)
+	s.Cache.InsertImage(oneImage.Image.Identifier, "fr-1", oneImage.Image.Arch, oneImage.Image.Organization, oneImage.Image.Name, "")
 	return &oneImage.Image, nil
 }
 

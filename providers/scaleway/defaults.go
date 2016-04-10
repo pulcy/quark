@@ -27,6 +27,7 @@ const (
 	commercialTypeC2L = "C2L"
 
 	privateClusterDevice = "tun0"
+	tincCIDR             = "192.168.35.0/24"
 )
 
 // Apply defaults for the given options
@@ -47,6 +48,9 @@ func (vp *scalewayProvider) CreateClusterDefaults(options providers.CreateCluste
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
 	if options.SSHKeyGithubAccount == "" {
 		options.SSHKeyGithubAccount = "-"
+	}
+	if options.TincCIDR == "" {
+		options.TincCIDR = tincCIDR
 	}
 	return options
 }

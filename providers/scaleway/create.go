@@ -15,6 +15,7 @@
 package scaleway
 
 import (
+	"fmt"
 	"os"
 	"sync"
 	"time"
@@ -54,6 +55,9 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 	if options.RoleLoadBalancer {
 		publicIpv4 := server.PublicAddress.IP
 		publicIpv6 := ""
+		if server.IPV6 != nil {
+			publicIpv6 = server.IPV6.Address
+		}
 		if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 			return providers.ClusterInstance{}, maskAny(err)
 		}
@@ -66,6 +70,11 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 
 // Create a single server
 func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions) (string, error) {
+	// Validate input
+	if options.TincIpv4 == "" {
+		return "", maskAny(fmt.Errorf("TincIpv4 is empty"))
+	}
+
 	// Fetch SSH keys
 	sshKeys, err := providers.FetchSSHKeys(options.SSHKeyGithubAccount)
 	if err != nil {
@@ -118,7 +127,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 	}*/
 
 	publicIPIdentifier := ""
-	if options.RoleLoadBalancer {
+	if options.RoleLoadBalancer && vp.ReserveLoadBalancerIP {
 		ip, err := vp.getFreeIP()
 		if err != nil {
 			return "", maskAny(err)
@@ -136,9 +145,10 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 			options.ClusterInfo.ID,
 			options.TincIpv4,
 		},
-		Organization:   vp.organization,
+		Organization:   vp.Organization,
 		CommercialType: options.TypeID,
 		PublicIP:       publicIPIdentifier,
+		EnableIPV6:     vp.EnableIPV6,
 	}
 	if volID != "" {
 		opts.Volumes["0"] = volID
@@ -233,8 +243,8 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 		go func(i int) {
 			defer wg.Done()
 			time.Sleep(time.Duration((i - 1)) * time.Second * 10)
-			isCore := true
-			isLB := true
+			isCore := (i <= 3)
+			isLB := (i <= 2)
 			instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, i)
 			if err != nil {
 				errors <- maskAny(err)

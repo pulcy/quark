@@ -15,27 +15,53 @@
 package scaleway
 
 import (
+	"fmt"
+
 	"github.com/op/go-logging"
 	"github.com/scaleway/scaleway-cli/pkg/api"
 
 	"github.com/pulcy/quark/providers"
 )
 
+// ScalewayProviderConfig contains scaleway specific provider configuration
+type ScalewayProviderConfig struct {
+	// Authentication
+	Organization string
+	Token        string
+
+	ReserveLoadBalancerIP bool // If set, a reserved IP address will be used for the public IPv4 address
+	EnableIPV6            bool // If set, an IPv6 address will be used
+}
+
 type scalewayProvider struct {
-	Logger       *logging.Logger
-	client       *api.ScalewayAPI
-	organization string
+	ScalewayProviderConfig
+	Logger *logging.Logger
+	client *api.ScalewayAPI
+}
+
+// NewConfig initializes a default set of provider configuration options
+func NewConfig() ScalewayProviderConfig {
+	return ScalewayProviderConfig{
+		ReserveLoadBalancerIP: true,
+		EnableIPV6:            true,
+	}
 }
 
 // NewProvider creates a new Scaleway provider implementation
-func NewProvider(logger *logging.Logger, organization, token string) (providers.CloudProvider, error) {
-	client, err := api.NewScalewayAPI(organization, token, "quark")
+func NewProvider(logger *logging.Logger, config ScalewayProviderConfig) (providers.CloudProvider, error) {
+	if config.Organization == "" {
+		return nil, maskAny(fmt.Errorf("Organization not set"))
+	}
+	if config.Token == "" {
+		return nil, maskAny(fmt.Errorf("Token not set"))
+	}
+	client, err := api.NewScalewayAPI(config.Organization, config.Token, "quark")
 	if err != nil {
 		return nil, maskAny(err)
 	}
 	return &scalewayProvider{
-		Logger:       logger,
-		client:       client,
-		organization: organization,
+		ScalewayProviderConfig: config,
+		Logger:                 logger,
+		client:                 client,
 	}, nil
 }

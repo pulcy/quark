@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/scaleway/scaleway-cli/pkg/api"
+	"github.com/scaleway/scaleway-cli/pkg/config"
 	"github.com/scaleway/scaleway-cli/pkg/scwversion"
 )
 
@@ -66,9 +67,9 @@ func runUserdata(cmd *Command, args []string) error {
 	switch len(args) {
 	case 1:
 		// List userdata
-		res, err := API.GetUserdatas(serverID, metadata)
-		if err != nil {
-			return err
+		res, errGetUserdata := API.GetUserdatas(serverID, metadata)
+		if errGetUserdata != nil {
+			return errGetUserdata
 		}
 		for _, key := range res.UserData {
 			fmt.Fprintln(ctx.Stdout, key)
@@ -79,9 +80,9 @@ func runUserdata(cmd *Command, args []string) error {
 		switch len(parts) {
 		case 1:
 			// Get userdatas
-			res, err := API.GetUserdata(serverID, key, metadata)
-			if err != nil {
-				return err
+			res, errGetUserdata := API.GetUserdata(serverID, key, metadata)
+			if errGetUserdata != nil {
+				return errGetUserdata
 			}
 			fmt.Fprintf(ctx.Stdout, "%s\n", res.String())
 		default:
@@ -90,6 +91,13 @@ func runUserdata(cmd *Command, args []string) error {
 				var data []byte
 				// Set userdata
 				if value[0] == '@' {
+					if len(value) > 1 && value[1] == '~' {
+						home, err := config.GetHomeDir()
+						if err != nil {
+							return err
+						}
+						value = "@" + home + value[2:]
+					}
 					data, err = ioutil.ReadFile(value[1:])
 					if err != nil {
 						return err

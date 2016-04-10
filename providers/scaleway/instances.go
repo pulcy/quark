@@ -60,13 +60,17 @@ func (vp *scalewayProvider) getServers(info providers.ClusterInfo) ([]api.Scalew
 // clusterInstance creates a ClusterInstance record for the given server
 func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeeded bool) providers.ClusterInstance {
 	publicIPv4 := s.PublicAddress.IP
+	ipv6 := ""
+	if s.IPV6 != nil {
+		ipv6 = s.IPV6.Address
+	}
 	info := providers.ClusterInstance{
 		ID:               s.Identifier,
 		Name:             s.Name,
 		ClusterIP:        s.Tags[clusterIPTagIndex],
 		PrivateIP:        s.PrivateIP,
 		LoadBalancerIPv4: publicIPv4,
-		LoadBalancerIPv6: "",
+		LoadBalancerIPv6: ipv6,
 		ClusterDevice:    privateClusterDevice,
 		OS:               providers.OSNameUbuntu,
 	}

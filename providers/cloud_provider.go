@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"sort"
 	"strings"
 
@@ -28,10 +29,6 @@ import (
 
 var (
 	maskAny = errgo.MaskFunc(errgo.Any)
-)
-
-const (
-	tincAddressTemplate = "192.168.35.%d"
 )
 
 // DnsProvider holds all functions to be implemented by DNS providers
@@ -124,6 +121,7 @@ type CreateClusterOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
+	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 
 	instancePrefixes []string
 }
@@ -144,6 +142,27 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		return CreateInstanceOptions{}, maskAny(err)
 	}
 	vaultCertificate := string(raw)
+
+	tincAddress := ""
+	if o.TincCIDR != "" {
+		tincIP, tincNet, err := net.ParseCIDR(o.TincCIDR)
+		if err != nil {
+			return CreateInstanceOptions{}, maskAny(err)
+		}
+		tincIPv4 := tincIP.To4()
+		if tincIPv4 == nil {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected TincCIDR to be an IPv4 CIDR, got '%s'", o.TincCIDR))
+		}
+		if ones, bits := tincNet.Mask.Size(); ones != 24 || bits != 32 {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected TincCIDR to contain a /24 network, got '%s'", o.TincCIDR))
+		}
+		if instanceIndex < 1 || instanceIndex >= 255 {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected instanceIndex in the range of 1..254, got %d", instanceIndex))
+		}
+		tincIPv4[3] = byte(instanceIndex)
+		tincAddress = tincIPv4.String()
+	}
+
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
@@ -159,7 +178,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
 		VaultCertificate:        vaultCertificate,
-		TincIpv4:                fmt.Sprintf(tincAddressTemplate, instanceIndex),
+		TincIpv4:                tincAddress,
 	}
 	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
 	return io, nil

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -21,6 +22,26 @@ func check(t *testing.T, found, expected string) {
 	if !strings.Contains(found, expected) {
 		t.Errorf("Unexpected response.\nExpecting to contain: \n %q\nGot:\n %q\n", expected, found)
 	}
+}
+
+func runShellCheck(s string) error {
+	excluded := []string{
+		"SC2034", // PREFIX appears unused. Verify it or export it.
+	}
+	cmd := exec.Command("shellcheck", "-s", "bash", "-", "-e", strings.Join(excluded, ","))
+	cmd.Stderr = os.Stderr
+	cmd.Stdout = os.Stdout
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	go func() {
+		defer stdin.Close()
+		stdin.Write([]byte(s))
+	}()
+
+	return cmd.Run()
 }
 
 // World worst custom function, just keep telling you to enter hello!
@@ -43,8 +64,12 @@ func TestBashCompletions(t *testing.T) {
 	c.MarkFlagRequired("introot")
 
 	// valid nouns
-	validArgs := []string{"pods", "nodes", "services", "replicationControllers"}
+	validArgs := []string{"pod", "node", "service", "replicationcontroller"}
 	c.ValidArgs = validArgs
+
+	// noun aliases
+	argAliases := []string{"pods", "nodes", "services", "replicationcontrollers", "po", "no", "svc", "rc"}
+	c.ArgAliases = argAliases
 
 	// filename
 	var flagval string
@@ -88,7 +113,11 @@ func TestBashCompletions(t *testing.T) {
 	// check for custom completion function
 	check(t, str, `COMPREPLY=( "hello" )`)
 	// check for required nouns
-	check(t, str, `must_have_one_noun+=("pods")`)
+	check(t, str, `must_have_one_noun+=("pod")`)
+	// check for noun aliases
+	check(t, str, `noun_aliases+=("pods")`)
+	check(t, str, `noun_aliases+=("rc")`)
+	checkOmit(t, str, `must_have_one_noun+=("pods")`)
 	// check for filename extension flags
 	check(t, str, `flags_completion+=("_filedir")`)
 	// check for filename extension flags
@@ -99,4 +128,13 @@ func TestBashCompletions(t *testing.T) {
 	check(t, str, `flags_completion+=("__handle_subdirs_in_dir_flag themes")`)
 
 	checkOmit(t, str, cmdDeprecated.Name())
+
+	// if available, run shellcheck against the script
+	if err := exec.Command("which", "shellcheck").Run(); err != nil {
+		return
+	}
+	err := runShellCheck(str)
+	if err != nil {
+		t.Fatalf("shellcheck failed: %v", err)
+	}
 }

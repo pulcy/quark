@@ -17,7 +17,7 @@
 	"BuildConstraints": "darwin linux windows freebsd netbsd",
 	"ResourcesExclude": "*.go .goxc-temp",
 	"MainDirsExclude": "vendor,Godeps,testdata",
-	"PackageVersion": "1.8.1",
+	"PackageVersion": "1.9.0+dev",
 	"TaskSettings": {
 		"bintray": {
 			"downloadspage": "bintray.md",
@@ -41,12 +41,5 @@
 			"GOARM": "5"
 		}
 	},
-	"ConfigVersion": "0.9",
-	"BuildSettings": {
-		"LdFlags": "-s",
-		"LdFlagsXVars": {
-			"TimeNow": "main.BUILD_DATE",
-			"Version": "main.VERSION"
-		}
-	}
+	"ConfigVersion": "0.9"
 }
