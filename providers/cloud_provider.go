@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"sort"
 	"strings"
 
@@ -28,10 +29,6 @@ import (
 
 var (
 	maskAny = errgo.MaskFunc(errgo.Any)
-)
-
-const (
-	tincAddressTemplate = "192.168.35.%d"
 )
 
 // DnsProvider holds all functions to be implemented by DNS providers
@@ -116,6 +113,7 @@ type CreateClusterOptions struct {
 	InstanceConfig
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
+	RegisterInstances       bool     // If set, the instances will be registered with their instance name in DNS
 	InstanceCount           int      // Number of instances to start
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
@@ -124,6 +122,7 @@ type CreateClusterOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
+	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 
 	instancePrefixes []string
 }
@@ -139,15 +138,39 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		sort.Strings(o.instancePrefixes)
 	}
 
-	raw, err := ioutil.ReadFile(o.VaultCertificatePath)
-	if err != nil {
-		return CreateInstanceOptions{}, maskAny(err)
+	/*
+		raw, err := ioutil.ReadFile(o.VaultCertificatePath)
+		if err != nil {
+			return CreateInstanceOptions{}, maskAny(err)
+		}
+		vaultCertificate := string(raw)
+	*/
+
+	tincAddress := ""
+	if o.TincCIDR != "" {
+		tincIP, tincNet, err := net.ParseCIDR(o.TincCIDR)
+		if err != nil {
+			return CreateInstanceOptions{}, maskAny(err)
+		}
+		tincIPv4 := tincIP.To4()
+		if tincIPv4 == nil {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected TincCIDR to be an IPv4 CIDR, got '%s'", o.TincCIDR))
+		}
+		if ones, bits := tincNet.Mask.Size(); ones != 24 || bits != 32 {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected TincCIDR to contain a /24 network, got '%s'", o.TincCIDR))
+		}
+		if instanceIndex < 1 || instanceIndex >= 255 {
+			return CreateInstanceOptions{}, maskAny(fmt.Errorf("Expected instanceIndex in the range of 1..254, got %d", instanceIndex))
+		}
+		tincIPv4[3] = byte(instanceIndex)
+		tincAddress = tincIPv4.String()
 	}
-	vaultCertificate := string(raw)
+
 	io := CreateInstanceOptions{
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
 		InstanceIndex:           instanceIndex,
+		RegisterInstance:        o.RegisterInstances,
 		RoleCore:                isCore,
 		RoleLoadBalancer:        isLB,
 		SSHKeyNames:             o.SSHKeyNames,
@@ -158,8 +181,8 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
-		VaultCertificate:        vaultCertificate,
-		TincIpv4:                fmt.Sprintf(tincAddressTemplate, instanceIndex),
+		VaultCertificatePath:    o.VaultCertificatePath,
+		TincIpv4:                tincAddress,
 	}
 	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
 	return io, nil
@@ -172,6 +195,7 @@ type CreateInstanceOptions struct {
 	ClusterName             string   // Full name of the cluster e.g. "dev1.example.com"
 	InstanceName            string   // Name of the instance e.g. "abc123.dev1.example.com"
 	InstanceIndex           int      // 0,... used for odd/even metadata
+	RegisterInstance        bool     // If set, the instance will be register with its instance name in DNS
 	RoleCore                bool     // If set, this instance will get `core=true` metadata
 	RoleLoadBalancer        bool     // If set, this instance will get `lb=true` metadata and the instance will be registered under the cluster name in DNS
 	SSHKeyNames             []string // List of names of SSH keys to install
@@ -183,7 +207,8 @@ type CreateInstanceOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	EtcdProxy               bool   // If set, this instance will be an ETCD proxy
 	VaultAddress            string // URL of the vault
-	VaultCertificate        string // Contents of the vault ca-cert
+	VaultCertificatePath    string // Path of the vault ca-cert file
+	vaultCertificate        string // Contents of the vault ca-cert
 	TincIpv4                string // IP addres of tun0 (tinc) on this instance
 }
 
@@ -195,6 +220,23 @@ func (o *CreateInstanceOptions) SetupNames(prefix, clusterName, domain string) {
 	}
 	o.ClusterName = fmt.Sprintf("%s.%s", clusterName, domain)
 	o.InstanceName = fmt.Sprintf("%s.%s.%s", prefix, clusterName, domain)
+}
+
+// VaultCertificate reads the VaultCertificatePath and returns its content as a string
+func (o *CreateInstanceOptions) VaultCertificate() (string, error) {
+	if o.vaultCertificate == "" {
+		raw, err := ioutil.ReadFile(o.VaultCertificatePath)
+		if err != nil {
+			return "", maskAny(err)
+		}
+		o.vaultCertificate = string(raw)
+	}
+	return o.vaultCertificate, nil
+}
+
+// SetVaultCertificate sets the content of the VaultCertificate
+func (o *CreateInstanceOptions) SetVaultCertificate(contents string) {
+	o.vaultCertificate = contents
 }
 
 // NewCloudConfigOptions creates a new CloudConfigOptions instances with all
@@ -291,7 +333,7 @@ func (cco CreateClusterOptions) Validate() error {
 }
 
 // Validate the given options
-func (cio CreateInstanceOptions) Validate() error {
+func (cio CreateInstanceOptions) Validate(validateVault bool) error {
 	if cio.ClusterName == "" {
 		return errors.New("Please specify a cluster-name")
 	}
@@ -310,11 +352,15 @@ func (cio CreateInstanceOptions) Validate() error {
 	if cio.GluonImage == "" {
 		return errors.New("Please specify a gluon-image")
 	}
-	if cio.VaultAddress == "" {
-		return errors.New("Please specify a vault-addr")
-	}
-	if cio.VaultCertificate == "" {
-		return errors.New("Please specify a vault-cacert")
+	if validateVault {
+		if cio.VaultAddress == "" {
+			return errors.New("Please specify a vault-addr")
+		}
+		if content, err := cio.VaultCertificate(); err != nil {
+			return maskAny(err)
+		} else if content == "" {
+			return errors.New("Please specify a vault-cacert")
+		}
 	}
 	return nil
 }

@@ -16,11 +16,12 @@ package main
 
 import (
 	"os"
+	"strconv"
 )
 
 const (
 	defaultInstanceCount  = 3
-	defaultGluonImage     = "pulcy/gluon:0.14.7"
+	defaultGluonImage     = "pulcy/gluon:0.15.2"
 	defaultRebootStrategy = "etcd-lock"
 	defaultMinOSVersion   = "835.13.0"
 )
@@ -59,4 +60,10 @@ func defaultVaultAddr() string {
 
 func defaultVaultCACert() string {
 	return os.Getenv("VAULT_CACERT")
+}
+
+func defaultRegisterInstance() bool {
+	v := os.Getenv("QUARK_REGISTER_INSTANCES")
+	register, err := strconv.ParseBool(v)
+	return (err == nil) && register
 }

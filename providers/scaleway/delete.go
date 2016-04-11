@@ -41,17 +41,34 @@ func (vp *scalewayProvider) DeleteInstance(info providers.ClusterInstanceInfo, d
 	if err != nil {
 		return maskAny(err)
 	}
+
+	found := false
 	for _, s := range servers {
 		if s.Name == fullName {
 			if err := vp.deleteServer(s, dnsProvider, info.Domain); err != nil {
 				return maskAny(err)
 			}
-
-			return nil
+			found = true
+			break
 		}
 	}
 
-	return maskAny(NotFoundError)
+	if !found {
+		return maskAny(NotFoundError)
+	}
+
+	// Reconfigure tinc
+	instanceList, err := vp.GetInstances(info.ClusterInfo)
+	if err != nil {
+		return maskAny(err)
+	}
+	// Create tinc network config
+	newInstances := providers.ClusterInstanceList{}
+	if instanceList.ReconfigureTincCluster(vp.Logger, newInstances); err != nil {
+		return maskAny(err)
+	}
+
+	return nil
 }
 
 func (vp *scalewayProvider) deleteServer(s api.ScalewayServer, dnsProvider providers.DnsProvider, domain string) error {

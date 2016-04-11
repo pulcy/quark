@@ -8,7 +8,9 @@ METADATA=`curl http://169.254.42.42/conf`
 MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
 CLUSTERID=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=//g')
 TINCIP=$(echo "$METADATA" | egrep TAGS_1= | sed 's/TAGS_1=//g')
+IPV6_ADDRESS=$(echo "$METADATA" | egrep IPV6_ADDRESS= | sed 's/IPV6_ADDRESS=//g')
 echo "HOST_PRIVATE_IPV4="$SCWIP >>/etc/environment
+echo "HOST_IPV6="$IPV6_ADDRESS >>/etc/environment
 echo "COREOS_PRIVATE_IPV4="$TINCIP >>/etc/environment
 echo "COREOS_PUBLIC_IPV4="$SCWPUBLIC >>/etc/environment
 echo "MODEL="$MODEL >>/etc/environment
@@ -31,7 +33,8 @@ chmod -R og-rwx /home/core/.ssh
 echo "core ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 # Link utilities
-cd /usr/bin && ln -s /bin/mkdir && ln -s /bin/rmdir
+cd /usr/bin && ln -s /bin/mkdir && ln -s /bin/rmdir && ln -s /bin/bash
+cd /usr/sbin && ln -s /sbin/lsmod && ln -s /sbin/modprobe
 cd /usr/sbin && ln -s /sbin/iptables-save && ln -s /sbin/iptables-restore && ln -s /sbin/iptables
 cd /usr/sbin && ln -s /sbin/ip6tables-save && ln -s /sbin/ip6tables-restore && ln -s /sbin/ip6tables
 

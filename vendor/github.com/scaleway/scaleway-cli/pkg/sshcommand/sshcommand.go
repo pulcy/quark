@@ -2,22 +2,23 @@ package sshcommand
 
 import (
 	"fmt"
+	"runtime"
 	"strings"
 )
 
 // Command contains settings to build a ssh command
 type Command struct {
 	Host                string
-	Port                int
 	User                string
-	SkipHostKeyChecking bool
-	Quiet               bool
+	Port                int
 	SSHOptions          []string
 	Gateway             *Command
-	AllocateTTY         bool
 	Command             []string
 	Debug               bool
 	NoEscapeCommand     bool
+	SkipHostKeyChecking bool
+	Quiet               bool
+	AllocateTTY         bool
 
 	isGateway bool
 }
@@ -96,10 +97,11 @@ func (c *Command) Slice() []string {
 				escapedCommand = append(escapedCommand, fmt.Sprintf("%q", part))
 			}
 		}
-
 		slice = append(slice, fmt.Sprintf("%q", strings.Join(escapedCommand, " ")))
 	}
-
+	if runtime.GOOS == "windows" {
+		slice[len(slice)-1] = slice[len(slice)-1] + " " // Why ?
+	}
 	return slice
 }
 

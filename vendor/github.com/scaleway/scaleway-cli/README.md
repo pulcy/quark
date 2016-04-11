@@ -78,7 +78,8 @@ GO15VENDOREXPERIMENT=1 go get -u github.com/scaleway/scaleway-cli/cmd/scw
 or
 
 ```shell
-brew install "https://raw.githubusercontent.com/scaleway/scaleway-cli/master/contrib/homebrew/scw.rb" --HEAD
+brew tap scaleway/scaleway
+brew install scaleway/scaleway/scw --HEAD
 ```
 
 ---
@@ -1183,10 +1184,22 @@ $ scw inspect myserver | jq '.[0].public_ip.address'
 
 ### master (unreleased)
 
+* Fix sshExecCommand with Windows ([#338](https://github.com/scaleway/scaleway-cli/issues/338))
+* Fix `scw login` with Windows ([#341](https://github.com/scaleway/scaleway-cli/issues/341))
+* Add `enable_ipv6` field ([#334](https://github.com/scaleway/scaleway-cli/issues/334))
+* `scw _patch` handles ipv6=[true|false]
+* Add `ScalewayIPV6Definition`
+* Add marketplace alias in the cache to resolve image ([#330](https://github.com/scaleway/scaleway-cli/issues/330))
+* `scw _userdata` handles `@~/path/to/file` ([#321](https://github.com/scaleway/scaleway-cli/issues/321))
+
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.9.0...master)
+
+### v1.9.0 (2016-04-01)
+
 * Fix bug when using SCW_COMMERCIAL_TYPE variable
 * Switch to VC1S
 
-View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.8.1...master)
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.8.1...v1.9.0)
 
 ### v1.8.1 (2016-03-29)
 

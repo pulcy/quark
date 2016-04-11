@@ -49,29 +49,41 @@ var (
 		PersistentPreRun: loadDefaults,
 	}
 
-	provider             string
-	digitalOceanToken    string
-	cloudflareApiKey     string
-	cloudflareEmail      string
-	scalewayOrganization string
-	scalewayToken        string
-	vagrantFolder        string
-	vultrApiKey          string
-	logLevel             string
+	provider          string
+	digitalOceanToken string
+	cloudflareApiKey  string
+	cloudflareEmail   string
+	scalewayCfg       scaleway.ScalewayProviderConfig
+	vagrantFolder     string
+	vultrApiKey       string
+	logLevel          string
 
 	log = logging.MustGetLogger(projectName)
 )
 
 func init() {
 	logging.SetFormatter(logging.MustStringFormatter("[%{level:-5s}] %{message}"))
+	scalewayCfg = scaleway.NewConfig()
 	cmdMain.PersistentFlags().StringVar(&logLevel, "log-level", defaultLogLevel, "Log level (debug|info|warning|error)")
 	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|scaleway|vagrant|vultr]")
+
+	// Digital ocean settings
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
+
+	// Cloudflare settings
 	cmdMain.PersistentFlags().StringVarP(&cloudflareApiKey, "cloudflare-apikey", "k", "", "Cloudflare API key")
 	cmdMain.PersistentFlags().StringVarP(&cloudflareEmail, "cloudflare-email", "e", "", "Cloudflare email address")
-	cmdMain.PersistentFlags().StringVarP(&scalewayOrganization, "scaleway-organization", "", "", "Scaleway organization ID")
-	cmdMain.PersistentFlags().StringVarP(&scalewayToken, "scaleway-token", "", "", "Scaleway token")
+
+	// Scaleway settings
+	cmdMain.PersistentFlags().StringVarP(&scalewayCfg.Organization, "scaleway-organization", "", scalewayCfg.Organization, "Scaleway organization ID")
+	cmdMain.PersistentFlags().StringVarP(&scalewayCfg.Token, "scaleway-token", "", scalewayCfg.Token, "Scaleway token")
+	cmdMain.PersistentFlags().BoolVar(&scalewayCfg.ReserveLoadBalancerIP, "scaleway-reserve-ip", scalewayCfg.ReserveLoadBalancerIP, "Use reserved IPv4 addresses for load-balancer instances")
+	cmdMain.PersistentFlags().BoolVar(&scalewayCfg.EnableIPV6, "scaleway-ipv6", scalewayCfg.EnableIPV6, "Enabled IPv6 on all instances")
+
+	// Vagrant settings
 	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", defaultVagrantFolder(), "Directory containing vagrant files")
+
+	// Vultr settings
 	cmdMain.PersistentFlags().StringVarP(&vultrApiKey, "vultr-apikey", "", "", "Vultr API key")
 }
 
@@ -113,21 +125,21 @@ func newProvider() providers.CloudProvider {
 		}
 		return digitalocean.NewProvider(log, digitalOceanToken)
 	case "scaleway":
-		if scalewayOrganization == "" || scalewayToken == "" {
+		if scalewayCfg.Organization == "" || scalewayCfg.Token == "" {
 			rc, err := scaleway.ReadRC()
 			if err != nil {
 				Exitf("Cannot read .scwrc: %#v\n", err)
 			}
-			scalewayOrganization = rc.Organization
-			scalewayToken = rc.Token
+			scalewayCfg.Organization = rc.Organization
+			scalewayCfg.Token = rc.Token
 		}
-		if scalewayOrganization == "" {
+		if scalewayCfg.Organization == "" {
 			Exitf("Please specify a scaleway-organization\n")
 		}
-		if scalewayToken == "" {
+		if scalewayCfg.Token == "" {
 			Exitf("Please specify a scaleway-token\n")
 		}
-		provider, err := scaleway.NewProvider(log, scalewayOrganization, scalewayToken)
+		provider, err := scaleway.NewProvider(log, scalewayCfg)
 		if err != nil {
 			Exitf("NewProvider failed: %#v\n", err)
 		}

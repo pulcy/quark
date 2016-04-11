@@ -21,14 +21,16 @@ import (
 )
 
 // RegisterInstance creates DNS records for an instance
-func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerCluster bool, publicIpv4, publicIpv6 string) error {
+func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerInstance, registerCluster bool, publicIpv4, publicIpv6 string) error {
 	logger.Infof("%s: '%s': '%s'", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
 	logger.Infof("Creating DNS records: '%s', '%s'", options.InstanceName, options.ClusterName)
 	if publicIpv4 != "" {
-		if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
-			return maskAny(err)
+		if registerInstance {
+			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.InstanceName, publicIpv4); err != nil {
+				return maskAny(err)
+			}
 		}
 		if registerCluster {
 			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
@@ -37,8 +39,10 @@ func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options C
 		}
 	}
 	if publicIpv6 != "" {
-		if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
-			return maskAny(err)
+		if registerInstance {
+			if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.InstanceName, publicIpv6); err != nil {
+				return maskAny(err)
+			}
 		}
 		if registerCluster {
 			if err := dnsProvider.CreateDnsRecord(options.Domain, "AAAA", options.ClusterName, publicIpv6); err != nil {

@@ -52,6 +52,11 @@ type ClusterInstance struct {
 	OS               OSName // Name of the OS on the instance
 }
 
+// Equals returns true of the given cluster instances refer to the same instance.
+func (i ClusterInstance) Equals(other ClusterInstance) bool {
+	return i.ID == other.ID && i.ClusterIP == other.ClusterIP
+}
+
 // String returns a human readable representation of the given instance
 func (i ClusterInstance) String() string {
 	if i.LoadBalancerIPv4 != "" {
@@ -189,7 +194,7 @@ func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, clusterIP stri
 // RemoveEtcdMember calls etcdctl to remove a member from ETCD
 func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, clusterIP string) error {
 	log.Infof("Removing %s(%s) from etcd on %s", name, clusterIP, i)
-	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1'", clusterIP), "", false)
+	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1 | cut -d[ -f1'", clusterIP), "", false)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -227,8 +232,9 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 }
 
 type InitialSetupOptions struct {
-	ClusterMembers ClusterMemberList
-	FleetMetadata  string
+	ClusterMembers   ClusterMemberList
+	FleetMetadata    string
+	EtcdClusterState string
 }
 
 func (i ClusterInstance) waitUntilActive(log *logging.Logger) error {
@@ -295,13 +301,17 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		fmt.Sprintf("VAULT_ADDR=%s", cio.VaultAddress),
 		fmt.Sprintf("VAULT_CACERT=/etc/pulcy/vault.crt"),
 	}
+	vaultCertificate, err := cio.VaultCertificate()
+	if err != nil {
+		return maskAny(err)
+	}
 	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.env", strings.Join(vaultEnv, "\n"), false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.env", "", false); err != nil {
 		return maskAny(err)
 	}
-	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", cio.VaultCertificate, false); err != nil {
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", vaultCertificate, false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
@@ -316,7 +326,6 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("docker run --rm -v %s:/destination/ %s", binDir, cio.GluonImage), "", false); err != nil {
 		return maskAny(err)
 	}
-	log.Infof("Running gluon on %s", i)
 	gluonArgs := []string{
 		fmt.Sprintf("--gluon-image=%s", cio.GluonImage),
 		fmt.Sprintf("--docker-ip=%s", i.ClusterIP),
@@ -327,6 +336,10 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		fmt.Sprintf("--private-registry-password=%s", cio.PrivateRegistryPassword),
 		fmt.Sprintf("--fleet-metadata=%s", iso.FleetMetadata),
 	}
+	if iso.EtcdClusterState != "" {
+		gluonArgs = append(gluonArgs, fmt.Sprintf("--etcd-cluster-state=%s", iso.EtcdClusterState))
+	}
+	log.Infof("Running gluon on %s with %#v", i, gluonArgs)
 	gluonPath := path.Join(binDir, "gluon")
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo %s setup %s", gluonPath, strings.Join(gluonArgs, " ")), "", false); err != nil {
 		return maskAny(err)
