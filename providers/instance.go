@@ -194,7 +194,7 @@ func (i ClusterInstance) AddEtcdMember(log *logging.Logger, name, clusterIP stri
 // RemoveEtcdMember calls etcdctl to remove a member from ETCD
 func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, clusterIP string) error {
 	log.Infof("Removing %s(%s) from etcd on %s", name, clusterIP, i)
-	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1'", clusterIP), "", false)
+	id, err := i.runRemoteCommand(log, fmt.Sprintf("sh -c 'etcdctl member list | grep %s | cut -d: -f1 | cut -d[ -f1'", clusterIP), "", false)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -232,8 +232,9 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 }
 
 type InitialSetupOptions struct {
-	ClusterMembers ClusterMemberList
-	FleetMetadata  string
+	ClusterMembers   ClusterMemberList
+	FleetMetadata    string
+	EtcdClusterState string
 }
 
 func (i ClusterInstance) waitUntilActive(log *logging.Logger) error {
@@ -335,6 +336,9 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		fmt.Sprintf("--private-registry-username=%s", cio.PrivateRegistryUserName),
 		fmt.Sprintf("--private-registry-password=%s", cio.PrivateRegistryPassword),
 		fmt.Sprintf("--fleet-metadata=%s", iso.FleetMetadata),
+	}
+	if iso.EtcdClusterState != "" {
+		gluonArgs = append(gluonArgs, fmt.Sprintf("--etcd-cluster-state=%s", iso.EtcdClusterState))
 	}
 	gluonPath := path.Join(binDir, "gluon")
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo %s setup %s", gluonPath, strings.Join(gluonArgs, " ")), "", false); err != nil {

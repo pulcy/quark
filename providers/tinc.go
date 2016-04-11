@@ -23,22 +23,6 @@ import (
 	"github.com/op/go-logging"
 )
 
-// ReconfigureTincCluster creates the tinc configuration on all instances of the given cluster.
-/*func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
-	// Load all instances
-	instances, err := provider.GetInstances(info)
-	if err != nil {
-		return maskAny(err)
-	}
-
-	// Call reconfigure-tinc-host on all instances
-	if instances.ReconfigureTincCluster(log); err != nil {
-		return maskAny(err)
-	}
-
-	return nil
-}*/
-
 // ReconfigureTincCluster creates the tinc configuration on all given instances.
 func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger, newInstances ClusterInstanceList) error {
 	// Now update all members in parallel
@@ -69,6 +53,14 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger,
 	for _, i := range instances {
 		if err := distributeTincHosts(log, i, vpnName, instances); err != nil {
 			return maskAny(err)
+		}
+	}
+
+	for _, i := range instances {
+		if !newInstances.Contains(i) {
+			if err := reloadTinc(log, i); err != nil {
+				return maskAny(err)
+			}
 		}
 	}
 
@@ -103,6 +95,14 @@ func reconfigureTincConf(log *logging.Logger, i ClusterInstance, vpnName string,
 		}
 	}
 	if err := createTincConf(log, i, vpnName, connectTo); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+func reloadTinc(log *logging.Logger, i ClusterInstance) error {
+	// Reload config
+	if _, err := i.runRemoteCommand(log, "sudo pkill -HUP tincd", "", false); err != nil {
 		return maskAny(err)
 	}
 	return nil

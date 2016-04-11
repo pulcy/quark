@@ -97,6 +97,11 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 	createInstanceFlags.SetVaultCertificate(vaultCACert)
 
+	// Setup instance index
+	if createInstanceFlags.InstanceIndex == 0 {
+		createInstanceFlags.InstanceIndex = len(instances) + 1
+	}
+
 	// Now validate everything
 	validateVault = true
 	if err := createInstanceFlags.Validate(validateVault); err != nil {
@@ -134,8 +139,9 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Perform initial setup on new instance
 	iso := providers.InitialSetupOptions{
-		ClusterMembers: clusterMembers,
-		FleetMetadata:  createInstanceFlags.CreateFleetMetadata(createInstanceFlags.InstanceIndex),
+		ClusterMembers:   clusterMembers,
+		FleetMetadata:    createInstanceFlags.CreateFleetMetadata(createInstanceFlags.InstanceIndex),
+		EtcdClusterState: "existing",
 	}
 	if err := instance.InitialSetup(log, createInstanceFlags, iso, provider); err != nil {
 		Exitf("Failed to perform initial instance setup: %v\n", err)

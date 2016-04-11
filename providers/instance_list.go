@@ -66,3 +66,24 @@ func (cil ClusterInstanceList) Contains(i ClusterInstance) bool {
 	}
 	return false
 }
+
+// InstanceByName returns the instance (in the given list) with the given name.
+func (cil ClusterInstanceList) InstanceByName(name string) (ClusterInstance, error) {
+	for _, x := range cil {
+		if x.Name == name {
+			return x, nil
+		}
+	}
+	return ClusterInstance{}, maskAny(NotFoundError)
+}
+
+// Except returns a copy of the given list except the given instance.
+func (cil ClusterInstanceList) Except(i ClusterInstance) ClusterInstanceList {
+	result := ClusterInstanceList{}
+	for _, x := range cil {
+		if !x.Equals(i) {
+			result = append(result, x)
+		}
+	}
+	return result
+}
