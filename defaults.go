@@ -16,6 +16,7 @@ package main
 
 import (
 	"os"
+	"strconv"
 )
 
 const (
@@ -59,4 +60,10 @@ func defaultVaultAddr() string {
 
 func defaultVaultCACert() string {
 	return os.Getenv("VAULT_CACERT")
+}
+
+func defaultRegisterInstance() bool {
+	v := os.Getenv("QUARK_REGISTER_INSTANCES")
+	register, err := strconv.ParseBool(v)
+	return (err == nil) && register
 }

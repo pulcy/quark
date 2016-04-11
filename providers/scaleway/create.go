@@ -58,7 +58,7 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 		if server.IPV6 != nil {
 			publicIpv6 = server.IPV6.Address
 		}
-		if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
+		if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RegisterInstance, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 			return providers.ClusterInstance{}, maskAny(err)
 		}
 	}

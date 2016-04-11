@@ -51,7 +51,7 @@ func (vp *vultrProvider) CreateInstance(log *logging.Logger, options providers.C
 	if len(server.V6Networks) > 0 {
 		publicIpv6 = server.V6Networks[0].MainIP
 	}
-	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
+	if err := providers.RegisterInstance(vp.Logger, dnsProvider, options, server.Name, options.RegisterInstance, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 

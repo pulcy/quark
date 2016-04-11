@@ -47,7 +47,10 @@ func init() {
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleCore, "role-core", false, "If set, the new instance will get `core=true` metadata")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleLoadBalancer, "role-lb", false, "If set, the new instance will get `lb=true` metadata and register with cluster name in DNS")
 	cmdCreateInstance.Flags().IntVar(&createInstanceFlags.InstanceIndex, "index", 0, "Used to create `odd=true` or `even=true` metadata")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultAddress, "vault-addr", defaultVaultAddr(), "URL of the vault used in this cluster")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincIpv4, "tinc-ipv4", "", "IPv4 address of the new instance inside the TINC network")
+	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instance will be registered with its instance name in DNS")
 	cmdInstance.AddCommand(cmdCreateInstance)
 }
 
@@ -59,7 +62,8 @@ func createInstance(cmd *cobra.Command, args []string) {
 	createInstanceFlags.SetupNames("", createInstanceFlags.Name, createInstanceFlags.Domain)
 
 	// Validate
-	if err := createInstanceFlags.Validate(); err != nil {
+	validateVault := false
+	if err := createInstanceFlags.Validate(validateVault); err != nil {
 		Exitf("Create failed: %s\n", err.Error())
 	}
 
@@ -91,7 +95,13 @@ func createInstance(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to get vault-cacert: %v\n", err)
 	}
-	createInstanceFlags.VaultCertificate = vaultCACert
+	createInstanceFlags.SetVaultCertificate(vaultCACert)
+
+	// Now validate everything
+	validateVault = true
+	if err := createInstanceFlags.Validate(validateVault); err != nil {
+		Exitf("Create failed: %s\n", err.Error())
+	}
 
 	// Create
 	instance, err := provider.CreateInstance(log, createInstanceFlags, newDnsProvider())

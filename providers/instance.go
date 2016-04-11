@@ -295,13 +295,17 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		fmt.Sprintf("VAULT_ADDR=%s", cio.VaultAddress),
 		fmt.Sprintf("VAULT_CACERT=/etc/pulcy/vault.crt"),
 	}
+	vaultCertificate, err := cio.VaultCertificate()
+	if err != nil {
+		return maskAny(err)
+	}
 	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.env", strings.Join(vaultEnv, "\n"), false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.env", "", false); err != nil {
 		return maskAny(err)
 	}
-	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", cio.VaultCertificate, false); err != nil {
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/vault.crt", vaultCertificate, false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
