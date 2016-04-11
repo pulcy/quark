@@ -326,7 +326,6 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("docker run --rm -v %s:/destination/ %s", binDir, cio.GluonImage), "", false); err != nil {
 		return maskAny(err)
 	}
-	log.Infof("Running gluon on %s", i)
 	gluonArgs := []string{
 		fmt.Sprintf("--gluon-image=%s", cio.GluonImage),
 		fmt.Sprintf("--docker-ip=%s", i.ClusterIP),
@@ -340,6 +339,7 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	if iso.EtcdClusterState != "" {
 		gluonArgs = append(gluonArgs, fmt.Sprintf("--etcd-cluster-state=%s", iso.EtcdClusterState))
 	}
+	log.Infof("Running gluon on %s with %#v", i, gluonArgs)
 	gluonPath := path.Join(binDir, "gluon")
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo %s setup %s", gluonPath, strings.Join(gluonArgs, " ")), "", false); err != nil {
 		return maskAny(err)

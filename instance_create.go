@@ -102,6 +102,15 @@ func createInstance(cmd *cobra.Command, args []string) {
 		createInstanceFlags.InstanceIndex = len(instances) + 1
 	}
 
+	// Check tinc IP (if any)
+	if createInstanceFlags.TincIpv4 != "" {
+		for _, i := range instances {
+			if i.ClusterIP == createInstanceFlags.TincIpv4 {
+				Exitf("Duplicate cluster IP: %s\n", createInstanceFlags.TincIpv4)
+			}
+		}
+	}
+
 	// Now validate everything
 	validateVault = true
 	if err := createInstanceFlags.Validate(validateVault); err != nil {
