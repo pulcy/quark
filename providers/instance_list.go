@@ -56,3 +56,13 @@ func (cil ClusterInstanceList) AsClusterMemberList(log *logging.Logger, isEtcdPr
 
 	return members, nil
 }
+
+// Contains returns true if the given instance is an element of the given list, false otherwise.
+func (cil ClusterInstanceList) Contains(i ClusterInstance) bool {
+	for _, x := range cil {
+		if x.Equals(i) {
+			return true
+		}
+	}
+	return false
+}

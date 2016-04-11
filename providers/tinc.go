@@ -24,7 +24,7 @@ import (
 )
 
 // ReconfigureTincCluster creates the tinc configuration on all instances of the given cluster.
-func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
+/*func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider CloudProvider) error {
 	// Load all instances
 	instances, err := provider.GetInstances(info)
 	if err != nil {
@@ -37,10 +37,10 @@ func ReconfigureTincCluster(log *logging.Logger, info ClusterInfo, provider Clou
 	}
 
 	return nil
-}
+}*/
 
 // ReconfigureTincCluster creates the tinc configuration on all given instances.
-func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger) error {
+func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger, newInstances ClusterInstanceList) error {
 	// Now update all members in parallel
 	vpnName := "pulcy"
 	wg := sync.WaitGroup{}
@@ -49,8 +49,14 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger)
 		wg.Add(1)
 		go func(i ClusterInstance) {
 			defer wg.Done()
-			if err := configureTincHost(log, i, vpnName, instances); err != nil {
-				errorChannel <- maskAny(err)
+			if newInstances.Contains(i) {
+				if err := configureTincHost(log, i, vpnName, instances); err != nil {
+					errorChannel <- maskAny(err)
+				}
+			} else {
+				if err := reconfigureTincConf(log, i, vpnName, instances); err != nil {
+					errorChannel <- maskAny(err)
+				}
 			}
 		}(i)
 	}
@@ -70,13 +76,7 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger)
 }
 
 func configureTincHost(log *logging.Logger, i ClusterInstance, vpnName string, instances ClusterInstanceList) error {
-	connectTo := []string{}
-	for _, x := range instances {
-		if x.Name != i.Name {
-			connectTo = append(connectTo, tincName(x))
-		}
-	}
-	if err := createTincConf(log, i, vpnName, connectTo); err != nil {
+	if err := reconfigureTincConf(log, i, vpnName, instances); err != nil {
 		return maskAny(err)
 	}
 	if err := createTincHostsConf(log, i, vpnName); err != nil {
@@ -90,6 +90,19 @@ func configureTincHost(log *logging.Logger, i ClusterInstance, vpnName string, i
 	}
 	//Create key
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tincd -n %s -K", vpnName), "", false); err != nil {
+		return maskAny(err)
+	}
+	return nil
+}
+
+func reconfigureTincConf(log *logging.Logger, i ClusterInstance, vpnName string, instances ClusterInstanceList) error {
+	connectTo := []string{}
+	for _, x := range instances {
+		if x.Name != i.Name {
+			connectTo = append(connectTo, tincName(x))
+		}
+	}
+	if err := createTincConf(log, i, vpnName, connectTo); err != nil {
 		return maskAny(err)
 	}
 	return nil

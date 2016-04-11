@@ -52,6 +52,11 @@ type ClusterInstance struct {
 	OS               OSName // Name of the OS on the instance
 }
 
+// Equals returns true of the given cluster instances refer to the same instance.
+func (i ClusterInstance) Equals(other ClusterInstance) bool {
+	return i.ID == other.ID && i.ClusterIP == other.ClusterIP
+}
+
 // String returns a human readable representation of the given instance
 func (i ClusterInstance) String() string {
 	if i.LoadBalancerIPv4 != "" {

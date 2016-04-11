@@ -41,6 +41,27 @@ const (
 // Create a machine instance
 func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
 	// Create server
+	instance, err := vp.createInstance(log, options, dnsProvider)
+	if err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+
+	// Update tinc network config
+	instanceList, err := vp.GetInstances(options.ClusterInfo)
+	if err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+	newInstances := providers.ClusterInstanceList{instance}
+	if instanceList.ReconfigureTincCluster(vp.Logger, newInstances); err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+
+	return instance, nil
+}
+
+// Create a machine instance
+func (vp *scalewayProvider) createInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+	// Create server
 	id, err := vp.createServer(options)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
@@ -250,7 +271,7 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 				errors <- maskAny(err)
 				return
 			}
-			instance, err := vp.CreateInstance(log, instanceOptions, dnsProvider)
+			instance, err := vp.createInstance(log, instanceOptions, dnsProvider)
 			if err != nil {
 				errors <- maskAny(err)
 			} else {
@@ -283,7 +304,7 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 	}
 
 	// Create tinc network config
-	if instanceList.ReconfigureTincCluster(vp.Logger); err != nil {
+	if instanceList.ReconfigureTincCluster(vp.Logger, instanceList); err != nil {
 		return maskAny(err)
 	}
 
