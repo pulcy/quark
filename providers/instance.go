@@ -41,15 +41,18 @@ const (
 
 // ClusterInstance describes a single instance
 type ClusterInstance struct {
-	ID               string // Provider specific ID of the server (only used by provider, can be empty)
-	Name             string // Name of the instance as known by the provider
-	ClusterIP        string // IP address of the instance used for all private communication in the cluster
-	LoadBalancerIPv4 string // IPv4 address of the instance on which the load-balancer is listening (can be empty)
-	LoadBalancerIPv6 string // IPv6 address of the instance on which the load-balancer is listening (can be empty)
-	ClusterDevice    string // Device name of the nic that is configured for the ClusterIP
-	PrivateIP        string // IP address of the instance's private network (can be same as ClusterIP)
-	UserName         string // Account name used to SSH into this instance. (empty defaults to 'core')
-	OS               OSName // Name of the OS on the instance
+	ID               string   // Provider specific ID of the server (only used by provider, can be empty)
+	Name             string   // Name of the instance as known by the provider
+	ClusterIP        string   // IP address of the instance used for all private communication in the cluster
+	LoadBalancerIPv4 string   // IPv4 address of the instance on which the load-balancer is listening (can be empty)
+	LoadBalancerIPv6 string   // IPv6 address of the instance on which the load-balancer is listening (can be empty)
+	LoadBalancerDNS  string   // Provider hosted public DNS name of the instance on which the load-balancer is listening (can be empty)
+	ClusterDevice    string   // Device name of the nic that is configured for the ClusterIP
+	PrivateIP        string   // IP address of the instance's private network (can be same as ClusterIP)
+	PrivateDNS       string   // Provider hosted private DNS name of the instance's private network
+	UserName         string   // Account name used to SSH into this instance. (empty defaults to 'core')
+	OS               OSName   // Name of the OS on the instance
+	Extra            []string // Extra informational data
 }
 
 // Equals returns true of the given cluster instances refer to the same instance.
@@ -64,6 +67,9 @@ func (i ClusterInstance) String() string {
 	}
 	if i.LoadBalancerIPv6 != "" {
 		return i.LoadBalancerIPv6
+	}
+	if i.LoadBalancerDNS != "" {
+		return i.LoadBalancerDNS
 	}
 	return i.Name
 }
@@ -90,6 +96,9 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 	hostAddress := i.LoadBalancerIPv4
 	if hostAddress == "" {
 		hostAddress = i.LoadBalancerIPv6
+	}
+	if hostAddress == "" {
+		hostAddress = i.LoadBalancerDNS
 	}
 	if hostAddress == "" {
 		return "", maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))

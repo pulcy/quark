@@ -59,6 +59,7 @@ func (vp *scalewayProvider) getServers(info providers.ClusterInfo) ([]api.Scalew
 
 // clusterInstance creates a ClusterInstance record for the given server
 func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeeded bool) providers.ClusterInstance {
+	//fmt.Printf("server=%#v\n", s)
 	publicIPv4 := s.PublicAddress.IP
 	ipv6 := ""
 	if s.IPV6 != nil {
@@ -69,13 +70,23 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 		Name:             s.Name,
 		ClusterIP:        s.Tags[clusterIPTagIndex],
 		PrivateIP:        s.PrivateIP,
+		PrivateDNS:       fmt.Sprintf("%s.priv.cloud.scaleway.com", s.Identifier),
 		LoadBalancerIPv4: publicIPv4,
 		LoadBalancerIPv6: ipv6,
+		LoadBalancerDNS:  fmt.Sprintf("%s.pub.cloud.scaleway.com", s.Identifier),
 		ClusterDevice:    privateClusterDevice,
 		OS:               providers.OSNameUbuntu,
 	}
 	if bootstrapNeeded {
 		info.UserName = "root"
+	}
+	if s.PublicAddress.IP == "" {
+		info.Extra = append(info.Extra, "nopubip")
+	} else if *s.PublicAddress.Dynamic {
+		info.Extra = append(info.Extra, "dynpubip")
+	}
+	if s.DynamicIPRequired != nil && *s.DynamicIPRequired {
+		info.Extra = append(info.Extra, "dynipreq")
 	}
 	return info
 }

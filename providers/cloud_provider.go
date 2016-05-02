@@ -72,6 +72,9 @@ type CloudProvider interface {
 	// Perform a reboot of the given instance
 	RebootInstance(instance ClusterInstance) error
 
+	// Update the instances of the cluster to all new services & formats
+	UpdateCluster(log *logging.Logger, info ClusterInfo, dnsProvider DnsProvider) error
+
 	ShowDomainRecords(domain string) error
 }
 
