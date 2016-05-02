@@ -60,7 +60,7 @@ type CfDnsRecord struct {
 	Type    string `json:"type"`
 	Name    string `json:"name"`
 	Content string `json:"content"`
-	TTL     int    `json:"ttl,omitempty'`
+	TTL     int    `json:"ttl,omitempty"`
 }
 
 func (p *cfProvider) ShowDomainRecords(domain string) error {

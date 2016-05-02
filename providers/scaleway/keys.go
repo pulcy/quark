@@ -31,7 +31,7 @@ func (vp *scalewayProvider) ShowKeys() error {
 		"Key | Fingerprint",
 	}
 	for _, r := range keys {
-		line := fmt.Sprintf("%v | %s | %s", r.Key, r.Fingerprint)
+		line := fmt.Sprintf("%v | %s", r.Key, r.Fingerprint)
 		lines = append(lines, line)
 	}
 
