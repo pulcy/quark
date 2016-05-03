@@ -88,11 +88,15 @@ func configureTincHost(log *logging.Logger, i ClusterInstance, vpnName string, i
 }
 
 func reconfigureTincConf(log *logging.Logger, i ClusterInstance, vpnName string, instances ClusterInstanceList) error {
+	log.Debugf("reconfigure tinc on %s", i)
 	connectTo := []string{}
 	for _, x := range instances {
 		if x.Name != i.Name {
 			connectTo = append(connectTo, tincName(x))
 		}
+	}
+	if err := createTincService(log, i, vpnName); err != nil {
+		return maskAny(err)
 	}
 	if err := createTincConf(log, i, vpnName, connectTo); err != nil {
 		return maskAny(err)
@@ -235,8 +239,8 @@ func createTincService(log *logging.Logger, i ClusterInstance, vpnName string) e
 		"[Service]",
 		"Type=simple",
 		fmt.Sprintf("ExecStart=/usr/sbin/tincd -D -n %s", vpnName),
-		fmt.Sprintf("ExecReload=/usr/sbin/tincd -n %s reload", vpnName),
-		fmt.Sprintf("ExecStop=/usr/sbin/tincd -n %s stop", vpnName),
+		fmt.Sprintf("ExecReload=/usr/sbin/tincd -n %s -k HUP", vpnName),
+		fmt.Sprintf("ExecStop=/usr/sbin/tincd -n %s -k", vpnName),
 		"TimeoutStopSec=5",
 		"Restart=always",
 		"RestartSec=60",
@@ -246,6 +250,9 @@ func createTincService(log *logging.Logger, i ClusterInstance, vpnName string) e
 	}
 	confPath := "/etc/systemd/system/tinc.service"
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", confPath), strings.Join(lines, "\n"), false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo systemctl daemon-reload", "", false); err != nil {
 		return maskAny(err)
 	}
 	if _, err := i.runRemoteCommand(log, "sudo systemctl enable tinc.service", "", false); err != nil {
