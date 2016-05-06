@@ -30,6 +30,7 @@ func init() {
 }
 
 func showKeys(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	provider := newProvider()
 	err := provider.ShowKeys()
 	if err != nil {

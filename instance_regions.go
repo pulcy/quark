@@ -30,6 +30,7 @@ func init() {
 }
 
 func showRegions(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	provider := newProvider()
 	err := provider.ShowRegions()
 	if err != nil {

@@ -52,11 +52,12 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.VaultAddress, "vault-addr", defaultVaultAddr(), "URL of the vault used in this cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
-	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstances, "register-instances", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
+	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
 	cmdCluster.AddCommand(cmdCreateCluster)
 }
 
 func createCluster(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)
 
 	provider := newProvider()

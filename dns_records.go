@@ -35,6 +35,7 @@ func init() {
 }
 
 func showDnsRecords(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	if dnsFlags.Domain == "" {
 		Exitf("Please specify a domain\n")
 	}

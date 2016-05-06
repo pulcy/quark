@@ -30,6 +30,7 @@ func init() {
 }
 
 func showImages(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	provider := newProvider()
 	err := provider.ShowImages()
 	if err != nil {

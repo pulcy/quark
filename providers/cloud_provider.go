@@ -116,7 +116,7 @@ type CreateClusterOptions struct {
 	InstanceConfig
 	SSHKeyNames             []string // List of names of SSH keys to install on each instance
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
-	RegisterInstances       bool     // If set, the instances will be registered with their instance name in DNS
+	RegisterInstance        bool     // If set, the instances will be registered with their instance name in DNS
 	InstanceCount           int      // Number of instances to start
 	GluonImage              string   // Docker image containing gluon
 	RebootStrategy          string
@@ -173,7 +173,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		ClusterInfo:             o.ClusterInfo,
 		InstanceConfig:          o.InstanceConfig,
 		InstanceIndex:           instanceIndex,
-		RegisterInstance:        o.RegisterInstances,
+		RegisterInstance:        o.RegisterInstance,
 		RoleCore:                isCore,
 		RoleLoadBalancer:        isLB,
 		SSHKeyNames:             o.SSHKeyNames,

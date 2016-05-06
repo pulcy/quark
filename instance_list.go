@@ -40,6 +40,7 @@ func init() {
 }
 
 func showInstances(cmd *cobra.Command, args []string) {
+	loadArgumentsFromCluster(cmd.Flags())
 	clusterInfoFromArgs(&instancesFlags, args)
 
 	provider := newProvider()
