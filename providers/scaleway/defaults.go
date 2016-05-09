@@ -39,6 +39,22 @@ func (vp *scalewayProvider) ClusterDefaults(options providers.ClusterInfo) provi
 func (vp *scalewayProvider) CreateInstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
 	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
 	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	if options.TincIpv4 == "" && options.TincCIDR != "" {
+		instances, err := vp.GetInstances(options.ClusterInfo)
+		if err != nil {
+			vp.Logger.Warningf("Failed to load instances: %#v", err)
+		} else {
+			ip, err := instances.CreateClusterIP(options.TincCIDR)
+			if err != nil {
+				vp.Logger.Warningf("Failed to create new cluster IP: %#v", err)
+			} else {
+				options.TincIpv4 = ip.String()
+				if options.InstanceIndex == 0 {
+					options.InstanceIndex = int(ip.To4()[3])
+				}
+			}
+		}
+	}
 	return options
 }
 

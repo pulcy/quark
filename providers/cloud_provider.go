@@ -185,6 +185,7 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
 		VaultCertificatePath:    o.VaultCertificatePath,
+		TincCIDR:                o.TincCIDR,
 		TincIpv4:                tincAddress,
 	}
 	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
@@ -201,6 +202,7 @@ type CreateInstanceOptions struct {
 	RegisterInstance        bool     // If set, the instance will be register with its instance name in DNS
 	RoleCore                bool     // If set, this instance will get `core=true` metadata
 	RoleLoadBalancer        bool     // If set, this instance will get `lb=true` metadata and the instance will be registered under the cluster name in DNS
+	RoleWorker              bool     // If set, this instance will get `worker=true` metadata
 	SSHKeyNames             []string // List of names of SSH keys to install
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
@@ -212,6 +214,7 @@ type CreateInstanceOptions struct {
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
 	vaultCertificate        string // Contents of the vault ca-cert
+	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	TincIpv4                string // IP addres of tun0 (tinc) on this instance
 }
 
@@ -265,6 +268,9 @@ func (o *CreateInstanceOptions) CreateFleetMetadata(instanceIndex int) string {
 	}
 	if o.RoleLoadBalancer {
 		list = append(list, "lb=true")
+	}
+	if o.RoleWorker {
+		list = append(list, "worker=true")
 	}
 	return strings.Join(list, ",")
 }

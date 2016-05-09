@@ -69,9 +69,15 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to find instance '%s'\n", destroyInstanceFlags.String())
 	}
-	remainingInstances := instances.Except(toRemove)
-	if err := remainingInstances[0].RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
-		Exitf("Failed to remove instance '%s' from ETCD\n", destroyInstanceFlags.String())
+	isEtcdProxy, err := toRemove.IsEtcdProxy(log)
+	if err != nil {
+		Exitf("Failed to query etcd mode for instance: %#v", err)
+	}
+	if !isEtcdProxy {
+		remainingInstances := instances.Except(toRemove)
+		if err := remainingInstances[0].RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
+			Exitf("Failed to remove instance '%s' from ETCD\n", destroyInstanceFlags.String())
+		}
 	}
 
 	if err := provider.DeleteInstance(destroyInstanceFlags, newDnsProvider()); err != nil {

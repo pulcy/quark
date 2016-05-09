@@ -230,6 +230,8 @@ func loadArgumentsFromCluster(flagSet *pflag.FlagSet) {
 	if len(parts) == 2 {
 		profile = parts[0]
 		cluster = parts[1]
+	} else {
+		Exitf("No cluster profile specified (-c profile@cluster)")
 	}
 	clustersPath := os.Getenv("PULCY_CLUSTERS")
 	if clustersPath == "" {
