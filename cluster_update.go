@@ -36,7 +36,8 @@ func init() {
 }
 
 func updateCluster(cmd *cobra.Command, args []string) {
-	loadArgumentsFromCluster(cmd.Flags())
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&updateClusterFlags, args)
 
 	provider := newProvider()

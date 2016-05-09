@@ -221,7 +221,7 @@ func clusterInstanceInfoFromArgs(info *providers.ClusterInstanceInfo, args []str
 }
 
 // loadArgumentsFromCluster and uses its data to update the given flagset.
-func loadArgumentsFromCluster(flagSet *pflag.FlagSet) {
+func loadArgumentsFromCluster(flagSet *pflag.FlagSet, requireProfile bool) {
 	if cluster == "" {
 		return
 	}
@@ -230,7 +230,7 @@ func loadArgumentsFromCluster(flagSet *pflag.FlagSet) {
 	if len(parts) == 2 {
 		profile = parts[0]
 		cluster = parts[1]
-	} else {
+	} else if requireProfile {
 		Exitf("No cluster profile specified (-c profile@cluster)")
 	}
 	clustersPath := os.Getenv("PULCY_CLUSTERS")

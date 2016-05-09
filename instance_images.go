@@ -30,7 +30,8 @@ func init() {
 }
 
 func showImages(cmd *cobra.Command, args []string) {
-	loadArgumentsFromCluster(cmd.Flags())
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	provider := newProvider()
 	err := provider.ShowImages()
 	if err != nil {

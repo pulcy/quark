@@ -39,7 +39,8 @@ func init() {
 }
 
 func showClusterInfo(cmd *cobra.Command, args []string) {
-	loadArgumentsFromCluster(cmd.Flags())
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&clusterInfoFlags, args)
 
 	provider := newProvider()

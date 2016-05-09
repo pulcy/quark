@@ -41,7 +41,8 @@ func init() {
 }
 
 func destroyInstance(cmd *cobra.Command, args []string) {
-	loadArgumentsFromCluster(cmd.Flags())
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInstanceInfoFromArgs(&destroyInstanceFlags, args)
 
 	provider := newProvider()

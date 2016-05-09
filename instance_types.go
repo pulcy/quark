@@ -30,7 +30,8 @@ func init() {
 }
 
 func showInstanceTypes(cmd *cobra.Command, args []string) {
-	loadArgumentsFromCluster(cmd.Flags())
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	provider := newProvider()
 	err := provider.ShowInstanceTypes()
 	if err != nil {
