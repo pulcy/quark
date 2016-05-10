@@ -31,6 +31,7 @@ type ScalewayProviderConfig struct {
 
 	ReserveLoadBalancerIP bool // If set, a reserved IP address will be used for the public IPv4 address
 	EnableIPV6            bool // If set, an IPv6 address will be used
+	NoIPv4                bool // If set, no IPv4 will be used for new instances
 }
 
 type scalewayProvider struct {

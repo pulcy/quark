@@ -17,8 +17,10 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 
 const (
 	defaultUsername = "core"
+	sshPort         = 22
 )
 
 // OSName specifies a name of an OS
@@ -92,14 +95,18 @@ func (i ClusterInstance) Home() string {
 	}
 }
 
+// IsSSHPortOpen checks if the SSH port on this instance is open for communications.
+func (i ClusterInstance) IsSSHPortOpen(log *logging.Logger) (bool, error) {
+	log.Debugf("Testing SSH port status on %s", i)
+	hostAddress := i.String()
+	if hostAddress == "" {
+		return false, maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
+	}
+	return isTCPPortOpen(hostAddress, sshPort), nil
+}
+
 func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin string, quiet bool) (string, error) {
-	hostAddress := i.LoadBalancerIPv4
-	if hostAddress == "" {
-		hostAddress = i.LoadBalancerIPv6
-	}
-	if hostAddress == "" {
-		hostAddress = i.LoadBalancerDNS
-	}
+	hostAddress := i.String()
 	if hostAddress == "" {
 		return "", maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
 	}
@@ -418,4 +425,14 @@ func (i ClusterInstance) RunScript(log *logging.Logger, scriptContent, scriptPat
 		return maskAny(err)
 	}
 	return nil
+}
+
+// isTCPPortOpen returns true if a TCP communication with "host:port" can be initialized
+func isTCPPortOpen(host string, port int) bool {
+	dest := net.JoinHostPort(host, strconv.Itoa(port))
+	conn, err := net.DialTimeout("tcp", dest, time.Duration(2000)*time.Millisecond)
+	if err == nil {
+		defer conn.Close()
+	}
+	return err == nil
 }

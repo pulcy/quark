@@ -129,7 +129,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 
 	name := options.InstanceName
 	image := &imageIdentifier.Identifier
-	dynamicIPRequired := true
+	dynamicIPRequired := !vp.NoIPv4
 	//bootscript := ""
 
 	volID := ""
@@ -235,18 +235,30 @@ func (vp *scalewayProvider) getFreeIP() (api.ScalewayIPDefinition, error) {
 }
 
 func (vp *scalewayProvider) waitUntilServerActive(id string, bootstrapNeeded bool) (api.ScalewayServer, error) {
+	currentState := ""
 	for {
-		gateway := ""
-		server, err := api.WaitForServerReady(vp.client, id, gateway)
+		server, err := vp.client.GetServer(id)
 		if err != nil {
 			return api.ScalewayServer{}, err
 		}
+		if server.State != currentState {
+			currentState = server.State
+			vp.Logger.Debugf("server state changed to '%s'", server.State)
+		}
 		if server.State == "running" {
-			// Attempt an SSH connection
 			instance := vp.clusterInstance(*server, bootstrapNeeded)
-			if _, err := instance.GetMachineID(vp.Logger); err == nil {
-				// Success
-				return *server, nil
+			// Check SSH port state
+			sshOpen, err := instance.IsSSHPortOpen(vp.Logger)
+			if err != nil {
+				vp.Logger.Errorf("Cannot check SSH port state: %#v", err)
+			} else if sshOpen {
+				// Attempt an SSH connection
+				if _, err := instance.GetMachineID(vp.Logger); err == nil {
+					// Success
+					return *server, nil
+				} else {
+					vp.Logger.Debugf("get machine-id failed: %#v", err)
+				}
 			}
 		}
 		// Wait a while
