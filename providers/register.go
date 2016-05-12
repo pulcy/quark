@@ -20,6 +20,10 @@ import (
 	"github.com/op/go-logging"
 )
 
+const (
+	privatePostfix = ".private"
+)
+
 // RegisterInstance creates DNS records for an instance
 func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerInstance, registerCluster, registerPrivateCluster bool, publicIpv4, publicIpv6, privateIpv4 string) error {
 	logger.Infof("%s: '%s': '%s'", name, publicIpv4, publicIpv6)
@@ -40,7 +44,7 @@ func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options C
 	}
 	if privateIpv4 != "" {
 		if registerPrivateCluster {
-			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName+".private", privateIpv4); err != nil {
+			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName+privatePostfix, privateIpv4); err != nil {
 				return maskAny(err)
 			}
 		}
@@ -74,6 +78,11 @@ func UnRegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, instanc
 	// Delete DNS cluster records
 	parts := strings.Split(instance.Name, ".")
 	clusterName := strings.Join(parts[1:], ".")
+	if instance.PrivateIP != "" {
+		if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName+privatePostfix, instance.PrivateIP); err != nil {
+			return maskAny(err)
+		}
+	}
 	if instance.LoadBalancerIPv4 != "" {
 		if err := dnsProvider.DeleteDnsRecord(domain, "A", clusterName, instance.LoadBalancerIPv4); err != nil {
 			return maskAny(err)

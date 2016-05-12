@@ -25,6 +25,9 @@ echo $TINCIP >/etc/pulcy/tinc-ip
 # Setup HTTP Proxy
 echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
 echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
+touch /etc/pulcy/docker.env
+echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
 {{ end }}
 
 # Create machine-id
