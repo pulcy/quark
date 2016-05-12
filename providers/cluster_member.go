@@ -33,10 +33,10 @@ func (cml ClusterMemberList) Render() string {
 	for _, cm := range cml {
 		options := ""
 		if cm.EtcdProxy {
-			options = " etcd-proxy"
+			options = options + " etcd-proxy"
 		}
 		if cm.PrivateHostIP != "" && cm.ClusterIP != cm.PrivateHostIP {
-			options = " private-host-ip=" + cm.PrivateHostIP
+			options = options + " private-host-ip=" + cm.PrivateHostIP
 		}
 		data = data + fmt.Sprintf("%s=%s%s\n", cm.MachineID, cm.ClusterIP, options)
 	}
