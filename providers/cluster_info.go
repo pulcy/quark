@@ -15,10 +15,26 @@
 package providers
 
 import (
-	"github.com/juju/errgo"
+	"fmt"
 )
 
-var (
-	maskAny       = errgo.MaskFunc(errgo.Any)
-	NotFoundError = errgo.New("not-found")
-)
+// ClusterInfo describes a cluster
+type ClusterInfo struct {
+	ID     string // /etc/pulcy/cluster-id, used for vault-monkey authentication
+	Domain string // Domain postfix (e.g. pulcy.com)
+	Name   string // Name of the cluster
+}
+
+func (ci ClusterInfo) String() string {
+	return fmt.Sprintf("%s.%s", ci.Name, ci.Domain)
+}
+
+// ClusterInstanceInfo describes a single instance of a cluster
+type ClusterInstanceInfo struct {
+	ClusterInfo
+	Prefix string // Prefix on the instance name
+}
+
+func (cii ClusterInstanceInfo) String() string {
+	return fmt.Sprintf("%s.%s.%s", cii.Prefix, cii.Name, cii.Domain)
+}

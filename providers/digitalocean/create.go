@@ -168,9 +168,10 @@ func (dp *doProvider) CreateInstance(log *logging.Logger, options providers.Crea
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
+	privateIpv4 := getIpv4(*droplet, "private")
 	publicIpv4 := getIpv4(*droplet, "public")
 	publicIpv6 := getIpv6(*droplet, "public")
-	if err := providers.RegisterInstance(dp.Logger, dnsProvider, options, createDroplet.Name, options.RegisterInstance, options.RoleLoadBalancer, publicIpv4, publicIpv6); err != nil {
+	if err := providers.RegisterInstance(dp.Logger, dnsProvider, options, createDroplet.Name, options.RegisterInstance, options.RoleLoadBalancer, options.RoleLoadBalancer, publicIpv4, publicIpv6, privateIpv4); err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 

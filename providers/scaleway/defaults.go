@@ -28,6 +28,8 @@ const (
 
 	privateClusterDevice = "tun0"
 	tincCIDR             = "192.168.35.0/24"
+	defaultFleetVersion  = "v0.11.5"
+	defaultEtcdVersion   = "v2.3.0"
 )
 
 // Apply defaults for the given options

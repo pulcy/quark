@@ -53,6 +53,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.HttpProxy, "http-proxy", "", "Address of HTTP proxy to use on instances")
 	cmdCluster.AddCommand(cmdCreateCluster)
 }
 

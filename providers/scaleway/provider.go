@@ -21,6 +21,7 @@ import (
 	"github.com/scaleway/scaleway-cli/pkg/api"
 
 	"github.com/pulcy/quark/providers"
+	"github.com/pulcy/quark/util"
 )
 
 // ScalewayProviderConfig contains scaleway specific provider configuration
@@ -28,6 +29,8 @@ type ScalewayProviderConfig struct {
 	// Authentication
 	Organization string
 	Token        string
+	FleetVersion string
+	EtcdVersion  string
 
 	ReserveLoadBalancerIP bool // If set, a reserved IP address will be used for the public IPv4 address
 	EnableIPV6            bool // If set, an IPv6 address will be used
@@ -38,11 +41,14 @@ type scalewayProvider struct {
 	ScalewayProviderConfig
 	Logger *logging.Logger
 	client *api.ScalewayAPI
+	dm     util.DownloadManager
 }
 
 // NewConfig initializes a default set of provider configuration options
 func NewConfig() ScalewayProviderConfig {
 	return ScalewayProviderConfig{
+		FleetVersion:          defaultFleetVersion,
+		EtcdVersion:           defaultEtcdVersion,
 		ReserveLoadBalancerIP: true,
 		EnableIPV6:            true,
 	}

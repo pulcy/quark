@@ -53,6 +53,7 @@ func init() {
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincIpv4, "tinc-ipv4", "", "IPv4 address of the new instance inside the TINC network")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instance will be registered with its instance name in DNS")
+	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.HttpProxy, "http-proxy", "", "Address of HTTP proxy to use on the instance")
 	cmdInstance.AddCommand(cmdCreateInstance)
 }
 

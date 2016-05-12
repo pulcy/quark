@@ -21,7 +21,7 @@ import (
 )
 
 // RegisterInstance creates DNS records for an instance
-func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerInstance, registerCluster bool, publicIpv4, publicIpv6 string) error {
+func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options CreateInstanceOptions, name string, registerInstance, registerCluster, registerPrivateCluster bool, publicIpv4, publicIpv6, privateIpv4 string) error {
 	logger.Infof("%s: '%s': '%s'", name, publicIpv4, publicIpv6)
 
 	// Create DNS record for the instance
@@ -34,6 +34,13 @@ func RegisterInstance(logger *logging.Logger, dnsProvider DnsProvider, options C
 		}
 		if registerCluster {
 			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName, publicIpv4); err != nil {
+				return maskAny(err)
+			}
+		}
+	}
+	if privateIpv4 != "" {
+		if registerPrivateCluster {
+			if err := dnsProvider.CreateDnsRecord(options.Domain, "A", options.ClusterName+".private", privateIpv4); err != nil {
 				return maskAny(err)
 			}
 		}

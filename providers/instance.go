@@ -77,6 +77,14 @@ func (i ClusterInstance) String() string {
 	return i.Name
 }
 
+func (i ClusterInstance) hostAddress(addBrackets bool) string {
+	s := i.String()
+	if addBrackets && strings.Contains(s, ":") {
+		return "[" + s + "]"
+	}
+	return s
+}
+
 // User returns the standard username of this instance
 func (i ClusterInstance) User() string {
 	if i.UserName == "" {
@@ -106,11 +114,11 @@ func (i ClusterInstance) IsSSHPortOpen(log *logging.Logger) (bool, error) {
 }
 
 func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin string, quiet bool) (string, error) {
-	hostAddress := i.String()
+	hostAddress := i.hostAddress(false)
 	if hostAddress == "" {
 		return "", maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
 	}
-	cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking=no", i.User()+"@"+hostAddress, command)
+	cmd := exec.Command("ssh", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", i.User()+"@"+hostAddress, command)
 	var stdOut, stdErr bytes.Buffer
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
@@ -129,6 +137,23 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 	out := stdOut.String()
 	out = strings.TrimSuffix(out, "\n")
 	return out, nil
+}
+
+func (i ClusterInstance) CopyTo(log *logging.Logger, localPath, instancePath string) error {
+	hostAddress := i.hostAddress(true)
+	if hostAddress == "" {
+		return maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
+	}
+	cmd := exec.Command("scp", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", localPath, i.User()+"@"+hostAddress+":"+instancePath)
+	var stdErr bytes.Buffer
+	cmd.Stderr = &stdErr
+
+	if err := cmd.Run(); err != nil {
+		log.Errorf("SCP failed: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
+		return errgo.NoteMask(err, stdErr.String())
+	}
+
+	return nil
 }
 
 func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
@@ -240,10 +265,11 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 		return ClusterMember{}, maskAny(err)
 	}
 	return ClusterMember{
-		ClusterID: clusterID,
-		MachineID: machineID,
-		ClusterIP: i.ClusterIP,
-		EtcdProxy: etcdProxy,
+		ClusterID:     clusterID,
+		MachineID:     machineID,
+		ClusterIP:     i.ClusterIP,
+		PrivateHostIP: i.PrivateIP,
+		EtcdProxy:     etcdProxy,
 	}, nil
 }
 
