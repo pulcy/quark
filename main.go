@@ -18,11 +18,15 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
+	"github.com/kardianos/osext"
 	"github.com/op/go-logging"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
+	clusterpkg "github.com/pulcy/quark/cluster"
 	"github.com/pulcy/quark/providers"
 	"github.com/pulcy/quark/providers/cloudflare"
 	"github.com/pulcy/quark/providers/digitalocean"
@@ -57,6 +61,7 @@ var (
 	vagrantFolder     string
 	vultrApiKey       string
 	logLevel          string
+	cluster           string
 
 	log = logging.MustGetLogger(projectName)
 )
@@ -66,6 +71,7 @@ func init() {
 	scalewayCfg = scaleway.NewConfig()
 	cmdMain.PersistentFlags().StringVar(&logLevel, "log-level", defaultLogLevel, "Log level (debug|info|warning|error)")
 	cmdMain.PersistentFlags().StringVarP(&provider, "provider", "p", "", "Provider used for creating clusters [digitalocean|scaleway|vagrant|vultr]")
+	cmdMain.PersistentFlags().StringVarP(&cluster, "cluster", "c", "", "Path of the cluster template [<profile>@]path")
 
 	// Digital ocean settings
 	cmdMain.PersistentFlags().StringVarP(&digitalOceanToken, "digitalocean-token", "t", "", "Digital Ocean token")
@@ -212,4 +218,73 @@ func clusterInstanceInfoFromArgs(info *providers.ClusterInstanceInfo, args []str
 		info.Name = parts[1]
 		info.Domain = parts[2]
 	}
+}
+
+// loadArgumentsFromCluster and uses its data to update the given flagset.
+func loadArgumentsFromCluster(flagSet *pflag.FlagSet, requireProfile bool) {
+	if cluster == "" {
+		return
+	}
+	profile := ""
+	parts := strings.Split(cluster, "@")
+	if len(parts) == 2 {
+		profile = parts[0]
+		cluster = parts[1]
+	} else if requireProfile {
+		Exitf("No cluster profile specified (-c profile@cluster)")
+	}
+	clustersPath := os.Getenv("PULCY_CLUSTERS")
+	if clustersPath == "" {
+		clustersPath = "config/clusters"
+	}
+	path, err := resolvePath(cluster, clustersPath, ".hcl")
+	if err != nil {
+		Exitf("Cannot resolve cluster path: %#v", err)
+	}
+	c, err := clusterpkg.ParseClusterFromFile(path)
+	if err != nil {
+		Exitf("Cannot load cluster from path '%s': %#v", clustersPath, err)
+	}
+	values, err := c.ResolveProfile(profile)
+	if err != nil {
+		Exitf("Cannot resolve profile '%s' in cluster path '%s': %#v", profile, clustersPath, err)
+	}
+	flagSet.VisitAll(func(flag *pflag.Flag) {
+		if !flag.Changed {
+			value, ok := values[flag.Name]
+			if ok {
+				err := flagSet.Set(flag.Name, fmt.Sprintf("%v", value))
+				if err != nil {
+					Exitf("Error in option '%s': %#v\n", flag.Name, err)
+				}
+				log.Debugf("--%s=%v", flag.Name, value)
+			}
+		}
+	})
+}
+
+// resolvePath tries to resolve a given path.
+// 1) Try as real path
+// 2) Try as filename relative to my process with given relative folder & extension
+func resolvePath(path, altFolder, extension string) (string, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// path not found, try locating it by name in a different folder
+		var folder string
+		if filepath.IsAbs(altFolder) {
+			folder = altFolder
+		} else {
+			// altFolder is relative, assume it is relative to our executable
+			exeFolder, err := osext.ExecutableFolder()
+			if err != nil {
+				return "", maskAny(err)
+			}
+			folder = filepath.Join(exeFolder, altFolder)
+		}
+		path = filepath.Join(folder, path) + extension
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			// Try without extensions
+			path = filepath.Join(folder, path)
+		}
+	}
+	return path, nil
 }

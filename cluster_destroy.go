@@ -40,6 +40,8 @@ func init() {
 }
 
 func destroyCluster(cmd *cobra.Command, args []string) {
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&destroyClusterFlags, args)
 
 	provider := newProvider()

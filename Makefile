@@ -53,9 +53,12 @@ update-vendor:
 		github.com/coreos/go-semver \
 		github.com/dchest/uniuri \
 		github.com/digitalocean/godo \
+		github.com/hashicorp/hcl \
 		github.com/JamesClonk/vultr/lib \
 		github.com/juju/errgo \
+		github.com/kardianos/osext \
 		github.com/mitchellh/go-homedir \
+		github.com/mitchellh/mapstructure \
 		github.com/op/go-logging \
 		github.com/ryanuber/columnize \
 		github.com/scaleway/scaleway-cli/pkg/api \

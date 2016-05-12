@@ -30,6 +30,8 @@ func init() {
 }
 
 func showRegions(cmd *cobra.Command, args []string) {
+	requireProfile := false
+	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	provider := newProvider()
 	err := provider.ShowRegions()
 	if err != nil {

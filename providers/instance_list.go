@@ -15,6 +15,8 @@
 package providers
 
 import (
+	"fmt"
+	"net"
 	"sync"
 
 	"github.com/op/go-logging"
@@ -86,4 +88,38 @@ func (cil ClusterInstanceList) Except(i ClusterInstance) ClusterInstanceList {
 		}
 	}
 	return result
+}
+
+// IsFreeClusterIP returns true if the given IP address is not used as a cluster IP by any of the instances.
+// false otherwise.
+func (cil ClusterInstanceList) IsFreeClusterIP(ip net.IP) bool {
+	ipAddr := ip.String()
+	for _, x := range cil {
+		if x.ClusterIP == ipAddr {
+			return false
+		}
+	}
+	return true
+}
+
+// CreateClusterIP returns an IP address in the given CIDR, not used by any of the instances.
+func (cil ClusterInstanceList) CreateClusterIP(cidr string) (net.IP, error) {
+	ip, nw, err := net.ParseCIDR(cidr)
+	if err != nil {
+		return net.IP{}, maskAny(err)
+	}
+	ipv4 := ip.To4()
+	if ipv4 == nil {
+		return net.IP{}, maskAny(fmt.Errorf("Expected CIDR to be an IPv4 CIDR, got '%s'", cidr))
+	}
+	if ones, bits := nw.Mask.Size(); ones != 24 || bits != 32 {
+		return net.IP{}, maskAny(fmt.Errorf("Expected CIDR to contain a /24 network, got '%s'", cidr))
+	}
+	for i := 1; i < 255; i++ {
+		ipv4[3] = byte(i)
+		if cil.IsFreeClusterIP(ipv4) {
+			return ipv4, nil
+		}
+	}
+	return net.IP{}, maskAny(fmt.Errorf("no free IP left in '%s'", cidr))
 }
