@@ -105,7 +105,7 @@ func (vp *scalewayProvider) deleteServer(s api.ScalewayServer, dnsProvider provi
 	}*/
 
 	// Delete IP
-	if !(*s.PublicAddress.Dynamic) {
+	if (s.PublicAddress.Dynamic != nil) && !(*s.PublicAddress.Dynamic) {
 		if err := vp.client.DeleteIP(s.PublicAddress.Identifier); err != nil {
 			vp.Logger.Errorf("Failed to delete IP %s: %#v", s.PublicAddress.Identifier, err)
 			return maskAny(err)
