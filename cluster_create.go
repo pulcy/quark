@@ -49,8 +49,6 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.PrivateRegistryPassword, "private-registry-password", defaultPrivateRegistryPassword(), "Password for private registry")
 	cmdCreateCluster.Flags().StringSliceVar(&createClusterFlags.SSHKeyNames, "ssh-key", defaultSshKeys(), "Names of SSH keys to add to instances")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.SSHKeyGithubAccount, "ssh-key-github-account", defaultSshKeyGithubAccount(), "Github account name used to fetch SSH keys (to add to instances)")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.VaultAddress, "vault-addr", defaultVaultAddr(), "URL of the vault used in this cluster")
-	cmdCreateCluster.Flags().StringVar(&createClusterFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.HttpProxy, "http-proxy", "", "Address of HTTP proxy to use on instances")
@@ -58,6 +56,9 @@ func init() {
 }
 
 func createCluster(cmd *cobra.Command, args []string) {
+	createClusterFlags.VaultAddress = vaultCfg.VaultAddr
+	createClusterFlags.VaultCertificatePath = vaultCfg.VaultCACert
+
 	requireProfile := false
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&createClusterFlags.ClusterInfo, args)

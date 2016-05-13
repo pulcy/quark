@@ -62,6 +62,7 @@ var (
 	vultrApiKey       string
 	logLevel          string
 	cluster           string
+	vaultCfg          providers.VaultProviderConfig
 
 	log = logging.MustGetLogger(projectName)
 )
@@ -92,6 +93,13 @@ func init() {
 
 	// Vultr settings
 	cmdMain.PersistentFlags().StringVarP(&vultrApiKey, "vultr-apikey", "", "", "Vultr API key")
+
+	// Vault settings
+	vaultCfg.VaultCAPath = os.Getenv("VAULT_CAPATH")
+	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultAddr, "vault-addr", defaultVaultAddr(), "URL of the vault (defaults to VAULT_ADDR environment variable)")
+	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCACert, "vault-cacert", defaultVaultCACert(), "Path to a PEM-encoded CA cert file to use to verify the Vault server SSL certificate")
+	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCAPath, "vault-capath", vaultCfg.VaultCAPath, "Path to a directory of PEM-encoded CA cert files to verify the Vault server SSL certificate")
+	cmdMain.PersistentFlags().StringVarP(&vaultCfg.GithubToken, "github-token", "G", defaultGithubToken(), "Personal github token for administrator logins")
 }
 
 func main() {
@@ -175,6 +183,14 @@ func newDnsProvider() providers.DnsProvider {
 		Exitf("Please specify a cloudflare-email\n")
 	}
 	return cloudflare.NewProvider(log, cloudflareApiKey, cloudflareEmail)
+}
+
+func newVaultProvider() providers.VaultProvider {
+	provider, err := providers.NewVaultProvider(log, vaultCfg)
+	if err != nil {
+		Exitf("Failed to created vault provider: %#v\n", err)
+	}
+	return provider
 }
 
 func confirm(question string) error {

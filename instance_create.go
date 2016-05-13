@@ -48,8 +48,6 @@ func init() {
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleLoadBalancer, "role-lb", false, "If set, the new instance will get `lb=true` metadata and register with cluster name in DNS")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleWorker, "role-worker", false, "If set, the new instance will get `worker=true` metadata")
 	cmdCreateInstance.Flags().IntVar(&createInstanceFlags.InstanceIndex, "index", 0, "Used to create `odd=true` or `even=true` metadata")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultAddress, "vault-addr", defaultVaultAddr(), "URL of the vault used in this cluster")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincIpv4, "tinc-ipv4", "", "IPv4 address of the new instance inside the TINC network")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instance will be registered with its instance name in DNS")
@@ -58,6 +56,9 @@ func init() {
 }
 
 func createInstance(cmd *cobra.Command, args []string) {
+	createInstanceFlags.VaultAddress = vaultCfg.VaultAddr
+	createInstanceFlags.VaultCertificatePath = vaultCfg.VaultCACert
+
 	requireProfile := true
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
