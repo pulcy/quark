@@ -28,6 +28,9 @@ echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
 touch /etc/pulcy/docker.env
 echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
 echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+touch /etc/apt/apt.conf.d/98proxy
+echo "Acquire::http::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
+echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
 {{ end }}
 
 # Create machine-id
@@ -53,17 +56,10 @@ cd /usr/sbin && ln -s /sbin/ip6tables-save && ln -s /sbin/ip6tables-restore && l
 HOST=$(hostname)
 echo "127.0.0.1 ${HOST}" >> /etc/hosts
 
-{{ if .EnableIPV6 }}
-# Force apt to use IPv6 only
-cat > /etc/apt/apt.conf.d/99force-ipv6 <<\FORCEIPV6
-Acquire::ForceIPv6 "true";
-FORCEIPV6
-mv /etc/apt/sources.list.d/docker.list /etc/apt/
-{{end}}
-
 # Install packages
 apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
+ && apt-get --force-yes -y -qq upgrade docker-engine \
  && apt-get --force-yes install -y -q tar tinc \
  && apt-get clean
 
