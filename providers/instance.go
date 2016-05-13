@@ -17,8 +17,10 @@ package providers
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"os/exec"
 	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -29,6 +31,7 @@ import (
 
 const (
 	defaultUsername = "core"
+	sshPort         = 22
 )
 
 // OSName specifies a name of an OS
@@ -74,6 +77,14 @@ func (i ClusterInstance) String() string {
 	return i.Name
 }
 
+func (i ClusterInstance) hostAddress(addBrackets bool) string {
+	s := i.String()
+	if addBrackets && strings.Contains(s, ":") {
+		return "[" + s + "]"
+	}
+	return s
+}
+
 // User returns the standard username of this instance
 func (i ClusterInstance) User() string {
 	if i.UserName == "" {
@@ -92,18 +103,22 @@ func (i ClusterInstance) Home() string {
 	}
 }
 
+// IsSSHPortOpen checks if the SSH port on this instance is open for communications.
+func (i ClusterInstance) IsSSHPortOpen(log *logging.Logger) (bool, error) {
+	log.Debugf("Testing SSH port status on %s", i)
+	hostAddress := i.String()
+	if hostAddress == "" {
+		return false, maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
+	}
+	return isTCPPortOpen(hostAddress, sshPort), nil
+}
+
 func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin string, quiet bool) (string, error) {
-	hostAddress := i.LoadBalancerIPv4
-	if hostAddress == "" {
-		hostAddress = i.LoadBalancerIPv6
-	}
-	if hostAddress == "" {
-		hostAddress = i.LoadBalancerDNS
-	}
+	hostAddress := i.hostAddress(false)
 	if hostAddress == "" {
 		return "", maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
 	}
-	cmd := exec.Command("ssh", "-o", "StrictHostKeyChecking=no", i.User()+"@"+hostAddress, command)
+	cmd := exec.Command("ssh", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", i.User()+"@"+hostAddress, command)
 	var stdOut, stdErr bytes.Buffer
 	cmd.Stdout = &stdOut
 	cmd.Stderr = &stdErr
@@ -122,6 +137,23 @@ func (i ClusterInstance) runRemoteCommand(log *logging.Logger, command, stdin st
 	out := stdOut.String()
 	out = strings.TrimSuffix(out, "\n")
 	return out, nil
+}
+
+func (i ClusterInstance) CopyTo(log *logging.Logger, localPath, instancePath string) error {
+	hostAddress := i.hostAddress(true)
+	if hostAddress == "" {
+		return maskAny(fmt.Errorf("don't have any address to communicate with instance %s", i.Name))
+	}
+	cmd := exec.Command("scp", "-o", "UserKnownHostsFile=/dev/null", "-o", "StrictHostKeyChecking=no", localPath, i.User()+"@"+hostAddress+":"+instancePath)
+	var stdErr bytes.Buffer
+	cmd.Stderr = &stdErr
+
+	if err := cmd.Run(); err != nil {
+		log.Errorf("SCP failed: %s %s", cmd.Path, strings.Join(cmd.Args, " "))
+		return errgo.NoteMask(err, stdErr.String())
+	}
+
+	return nil
 }
 
 func (i ClusterInstance) GetClusterID(log *logging.Logger) (string, error) {
@@ -233,10 +265,11 @@ func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, er
 		return ClusterMember{}, maskAny(err)
 	}
 	return ClusterMember{
-		ClusterID: clusterID,
-		MachineID: machineID,
-		ClusterIP: i.ClusterIP,
-		EtcdProxy: etcdProxy,
+		ClusterID:     clusterID,
+		MachineID:     machineID,
+		ClusterIP:     i.ClusterIP,
+		PrivateHostIP: i.PrivateIP,
+		EtcdProxy:     etcdProxy,
 	}, nil
 }
 
@@ -418,4 +451,14 @@ func (i ClusterInstance) RunScript(log *logging.Logger, scriptContent, scriptPat
 		return maskAny(err)
 	}
 	return nil
+}
+
+// isTCPPortOpen returns true if a TCP communication with "host:port" can be initialized
+func isTCPPortOpen(host string, port int) bool {
+	dest := net.JoinHostPort(host, strconv.Itoa(port))
+	conn, err := net.DialTimeout("tcp", dest, time.Duration(2000)*time.Millisecond)
+	if err == nil {
+		defer conn.Close()
+	}
+	return err == nil
 }

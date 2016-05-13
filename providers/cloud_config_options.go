@@ -14,11 +14,10 @@
 
 package providers
 
-import (
-	"github.com/juju/errgo"
-)
-
-var (
-	maskAny       = errgo.MaskFunc(errgo.Any)
-	NotFoundError = errgo.New("not-found")
-)
+// Options for cloud-config files
+type CloudConfigOptions struct {
+	ClusterID      string
+	PrivateIPv4    string
+	SshKeys        []string
+	RebootStrategy string
+}

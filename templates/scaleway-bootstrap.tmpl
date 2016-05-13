@@ -3,7 +3,9 @@
 # Fetch environment
 
 SCWIP=$(hostname  -I | awk '{print $1}')
+{{ if not .NoIPv4 }}
 SCWPUBLIC=$(curl http://v4.myip.ninja)
+{{ end }}
 METADATA=`curl http://169.254.42.42/conf`
 MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
 CLUSTERID=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=//g')
@@ -18,6 +20,18 @@ mkdir -p /etc/pulcy
 echo $CLUSTERID >/etc/pulcy/cluster-id
 chmod 0400 /etc/pulcy/cluster-id
 echo $TINCIP >/etc/pulcy/tinc-ip
+
+{{ if .HttpProxy }}
+# Setup HTTP Proxy
+echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
+echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
+touch /etc/pulcy/docker.env
+echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+touch /etc/apt/apt.conf.d/98proxy
+echo "Acquire::http::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
+echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
+{{ end }}
 
 # Create machine-id
 rm -f /etc/.regen-machine-id
@@ -45,16 +59,17 @@ echo "127.0.0.1 ${HOST}" >> /etc/hosts
 # Install packages
 apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
+ && apt-get --force-yes -y -qq upgrade docker-engine \
  && apt-get --force-yes install -y -q tar tinc \
  && apt-get clean
 
 # Install Fleet
-FLEETVERSION=v0.11.5
+FLEETVERSION={{.FleetVersion}}
 FLEETFILE=fleet-${FLEETVERSION}-linux-amd64
-cd /root && wget https://github.com/coreos/fleet/releases/download/${FLEETVERSION}/${FLEETFILE}.tar.gz \
-    && tar xzf ${FLEETFILE}.tar.gz \
+cd /root \
+    && tar xzf /tmp/fleet.tar.gz \
     && mv -f ${FLEETFILE}/* /usr/bin/ \
-    && rm -Rf ${FLEETFILE} ${FLEETFILE}.tar.gz
+    && rm -Rf ${FLEETFILE} /tmp/fleet.tar.gz
 cat > /etc/systemd/system/fleet.service <<\EOFLEET
 [Unit]
 Description=fleet daemon
@@ -85,13 +100,13 @@ ListenStream=/var/run/fleet.sock
 EOFLEETSOCKET
 
 # Install Etcd
-ETCDVERSION=v2.3.0
+ETCDVERSION={{.EtcdVersion}}
 ETCDFILE=etcd-${ETCDVERSION}-linux-amd64
-cd /usr/src/ && wget https://github.com/coreos/etcd/releases/download/${ETCDVERSION}/${ETCDFILE}.tar.gz \
-    && tar xzf ${ETCDFILE}.tar.gz \
+cd /usr/src/ \
+    && tar xzf /tmp/etcd.tar.gz \
     && mv -f ${ETCDFILE}/etcd /usr/bin/etcd2 \
     && mv -f ${ETCDFILE}/* /usr/bin/ \
-    && rm -Rf ${ETCDFILE} ${ETCDFILE}.tar.gz
+    && rm -Rf ${ETCDFILE} /tmp/etcd.tar.gz
 useradd --system --no-create-home etcd
 mkdir /var/lib/etcd2
 chown etcd.etcd /var/lib/etcd2
@@ -116,6 +131,9 @@ WantedBy=multi-user.target
 EOETCD
 
 # Patch rootfs
+mkdir -p /etc/systemd/system/docker.service.d
+echo "[Service]" > /etc/systemd/system/docker.service.d/99-docker.conf
+echo "EnvironmentFile=/etc/environment" >> /etc/systemd/system/docker.service.d/99-docker.conf
 systemctl disable docker; systemctl enable docker
 
 # Prepare for reboot

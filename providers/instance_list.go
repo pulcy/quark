@@ -115,6 +115,16 @@ func (cil ClusterInstanceList) CreateClusterIP(cidr string) (net.IP, error) {
 	if ones, bits := nw.Mask.Size(); ones != 24 || bits != 32 {
 		return net.IP{}, maskAny(fmt.Errorf("Expected CIDR to contain a /24 network, got '%s'", cidr))
 	}
+	lastFreeIndex := -1
+	for i := 254; i >= 1; i-- {
+		ipv4[3] = byte(i)
+		if cil.IsFreeClusterIP(ipv4) {
+			lastFreeIndex = i
+		} else if lastFreeIndex > 0 {
+			ipv4[3] = byte(lastFreeIndex)
+			return ipv4, nil
+		}
+	}
 	for i := 1; i < 255; i++ {
 		ipv4[3] = byte(i)
 		if cil.IsFreeClusterIP(ipv4) {

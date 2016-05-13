@@ -157,10 +157,10 @@ func createTincConf(log *logging.Logger, i ClusterInstance, vpnName string, conn
 
 // createTincHostsConf creates a /etc/tinc/<vpnName>/hosts/<hostName> for the host of the given instance
 func createTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName string) error {
-	address := i.PrivateDNS
-	if address == "" {
-		address = i.PrivateIP
-	}
+	//address := i.PrivateDNS
+	//if address == "" {
+	address := i.PrivateIP
+	//}
 	lines := []string{
 		fmt.Sprintf("Address = %s", address),
 		fmt.Sprintf("Subnet = %s/32", i.ClusterIP),

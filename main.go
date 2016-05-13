@@ -85,6 +85,7 @@ func init() {
 	cmdMain.PersistentFlags().StringVarP(&scalewayCfg.Token, "scaleway-token", "", scalewayCfg.Token, "Scaleway token")
 	cmdMain.PersistentFlags().BoolVar(&scalewayCfg.ReserveLoadBalancerIP, "scaleway-reserve-ip", scalewayCfg.ReserveLoadBalancerIP, "Use reserved IPv4 addresses for load-balancer instances")
 	cmdMain.PersistentFlags().BoolVar(&scalewayCfg.EnableIPV6, "scaleway-ipv6", scalewayCfg.EnableIPV6, "Enabled IPv6 on all instances")
+	cmdMain.PersistentFlags().BoolVar(&scalewayCfg.NoIPv4, "scaleway-no-ipv4", scalewayCfg.NoIPv4, "Do not add IPv4 addresses to new instances")
 
 	// Vagrant settings
 	cmdMain.PersistentFlags().StringVarP(&vagrantFolder, "vagrant-folder", "f", defaultVagrantFolder(), "Directory containing vagrant files")

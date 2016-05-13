@@ -25,6 +25,14 @@ func (p *scalewayProvider) UpdateCluster(log *logging.Logger, info providers.Clu
 	if err != nil {
 		return maskAny(err)
 	}
+	members, err := instances.AsClusterMemberList(log, nil)
+	if err != nil {
+		return maskAny(err)
+	}
+	rebootAfter := false
+	if err := instances.UpdateClusterMembers(log, members, rebootAfter, p); err != nil {
+		return maskAny(err)
+	}
 	if err := instances.ReconfigureTincCluster(log, nil); err != nil {
 		return maskAny(err)
 	}

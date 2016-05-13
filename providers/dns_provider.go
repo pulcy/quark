@@ -14,11 +14,9 @@
 
 package providers
 
-import (
-	"github.com/juju/errgo"
-)
-
-var (
-	maskAny       = errgo.MaskFunc(errgo.Any)
-	NotFoundError = errgo.New("not-found")
-)
+// DnsProvider holds all functions to be implemented by DNS providers
+type DnsProvider interface {
+	ShowDomainRecords(domain string) error
+	CreateDnsRecord(domain, recordTpe, name, data string) error
+	DeleteDnsRecord(domain, recordType, name, data string) error
+}
