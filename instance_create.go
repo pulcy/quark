@@ -123,6 +123,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Create
+	log.Infof("Creating new instance on %s.%s", createInstanceFlags.Name, createInstanceFlags.Domain)
 	instance, err := provider.CreateInstance(log, createInstanceFlags, newDnsProvider())
 	if err != nil {
 		Exitf("Failed to create new instance: %v\n", err)
