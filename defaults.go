@@ -15,15 +15,20 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 const (
-	defaultInstanceCount  = 3
-	defaultGluonImage     = "pulcy/gluon:0.16.6"
-	defaultRebootStrategy = "etcd-lock"
-	defaultMinOSVersion   = "835.13.0"
+	defaultInstanceCount       = 3
+	defaultGluonImage          = "pulcy/gluon:0.16.8"
+	defaultRebootStrategy      = "etcd-lock"
+	defaultMinOSVersion        = "835.13.0"
+	defaultGithubTokenPathTmpl = "~/.pulcy/github-token"
 )
 
 func defaultDomain() string {
@@ -48,6 +53,22 @@ func defaultSshKeys() []string {
 
 func defaultSshKeyGithubAccount() string {
 	return os.Getenv("QUARK_SSH_KEY_GITHUB_ACCOUNT")
+}
+
+func defaultGithubToken() string {
+	path, err := homedir.Expand(defaultGithubTokenPathTmpl)
+	if err != nil {
+		log.Warningf("Cannot expand %s: %#v", defaultGithubTokenPathTmpl, err)
+		return ""
+	}
+	content, err := ioutil.ReadFile(path)
+	if os.IsNotExist(err) {
+		return ""
+	} else if err != nil {
+		log.Warningf("Cannot read %s: %#v", path, err)
+		return ""
+	}
+	return strings.TrimSpace(string(content))
 }
 
 func defaultVagrantFolder() string {

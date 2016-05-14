@@ -48,8 +48,6 @@ func init() {
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleLoadBalancer, "role-lb", false, "If set, the new instance will get `lb=true` metadata and register with cluster name in DNS")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleWorker, "role-worker", false, "If set, the new instance will get `worker=true` metadata")
 	cmdCreateInstance.Flags().IntVar(&createInstanceFlags.InstanceIndex, "index", 0, "Used to create `odd=true` or `even=true` metadata")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultAddress, "vault-addr", defaultVaultAddr(), "URL of the vault used in this cluster")
-	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.VaultCertificatePath, "vault-cacert", defaultVaultCACert(), "Path of the CA certificate of the vault used in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincIpv4, "tinc-ipv4", "", "IPv4 address of the new instance inside the TINC network")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instance will be registered with its instance name in DNS")
@@ -58,6 +56,9 @@ func init() {
 }
 
 func createInstance(cmd *cobra.Command, args []string) {
+	createInstanceFlags.VaultAddress = vaultCfg.VaultAddr
+	createInstanceFlags.VaultCertificatePath = vaultCfg.VaultCACert
+
 	requireProfile := true
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)
 	clusterInfoFromArgs(&createInstanceFlags.ClusterInfo, args)
@@ -82,21 +83,21 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Fetch cluster ID
-	clusterID, err := instances[0].GetClusterID(log)
+	clusterID, err := instances.GetClusterID(log)
 	if err != nil {
 		Exitf("Failed to get cluster-id: %v\n", err)
 	}
 	createInstanceFlags.ID = clusterID
 
 	// Fetch vault address
-	vaultAddr, err := instances[0].GetVaultAddr(log)
+	vaultAddr, err := instances.GetVaultAddr(log)
 	if err != nil {
 		Exitf("Failed to get vault-addr: %v\n", err)
 	}
 	createInstanceFlags.VaultAddress = vaultAddr
 
 	// Fetch vault CA certificate
-	vaultCACert, err := instances[0].GetVaultCrt(log)
+	vaultCACert, err := instances.GetVaultCrt(log)
 	if err != nil {
 		Exitf("Failed to get vault-cacert: %v\n", err)
 	}
@@ -129,23 +130,34 @@ func createInstance(cmd *cobra.Command, args []string) {
 		Exitf("Failed to create new instance: %v\n", err)
 	}
 
+	// Get the id of the new machine
+	machineID, err := instance.GetMachineID(log)
+	if err != nil {
+		Exitf("Failed to get machine ID: %v\n", err)
+	}
+
 	// Add new instance to ETCD (if not a proxy)
 	if !createInstanceFlags.EtcdProxy {
-		newMachineID, err := instance.GetMachineID(log)
-		if err != nil {
-			Exitf("Failed to get machine ID: %v\n", err)
-		}
-		if err := instances[0].AddEtcdMember(log, newMachineID, instance.ClusterIP); err != nil {
+		if err := instances.AddEtcdMember(log, machineID, instance.ClusterIP); err != nil {
 			Exitf("Failed to add new instance to etcd: %v\n", err)
 		}
+	}
+
+	// Add new instance to vault cluster
+	if err := newVaultProvider().AddMachine(clusterID, machineID); err != nil {
+		log.Warningf("Failed to add machine to vault: %#v", err)
 	}
 
 	// Add new instance to list
 	instances = append(instances, instance)
 
 	// Load cluster-members data
-	isEtcdProxy := func(i providers.ClusterInstance) bool {
-		return createInstanceFlags.EtcdProxy && (i.ClusterIP == instance.ClusterIP)
+	isEtcdProxy := func(i providers.ClusterInstance) (bool, error) {
+		if i.ClusterIP == instance.ClusterIP {
+			return createInstanceFlags.EtcdProxy, nil
+		}
+		result, err := i.IsEtcdProxy(log)
+		return result, maskAny(err)
 	}
 	clusterMembers, err := instances.AsClusterMemberList(log, isEtcdProxy)
 	if err != nil {

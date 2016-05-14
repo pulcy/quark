@@ -21,7 +21,7 @@ import (
 )
 
 // UpdateClusterMembers updates /etc/cluster-members on all instances of the cluster
-func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, rebootAfter bool, isEtcdProxy func(ClusterInstance) bool, provider CloudProvider) error {
+func UpdateClusterMembers(log *logging.Logger, info ClusterInfo, rebootAfter bool, isEtcdProxy func(ClusterInstance) (bool, error), provider CloudProvider) error {
 	// Load all instances
 	instances, err := provider.GetInstances(info)
 	if err != nil {

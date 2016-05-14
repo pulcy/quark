@@ -70,13 +70,17 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to find instance '%s'\n", destroyInstanceFlags.String())
 	}
+	machineID, err := toRemove.GetMachineID(log)
+	if err != nil {
+		Exitf("Failed to query machine id for instance: %#v", err)
+	}
 	isEtcdProxy, err := toRemove.IsEtcdProxy(log)
 	if err != nil {
 		Exitf("Failed to query etcd mode for instance: %#v", err)
 	}
 	if !isEtcdProxy {
 		remainingInstances := instances.Except(toRemove)
-		if err := remainingInstances[0].RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
+		if err := remainingInstances.RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
 			Exitf("Failed to remove instance '%s' from ETCD\n", destroyInstanceFlags.String())
 		}
 	}
@@ -88,6 +92,11 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	// Update existing members
 	if err := providers.UpdateClusterMembers(log, destroyInstanceFlags.ClusterInfo, false, nil, provider); err != nil {
 		Exitf("Failed to update cluster members: %v\n", err)
+	}
+
+	// Remove machine from vault
+	if err := newVaultProvider().RemoveMachine(machineID); err != nil {
+		log.Warningf("Failed to remove machine from vault: %#v", err)
 	}
 
 	Infof("Destroyed instance %s\n", destroyInstanceFlags)

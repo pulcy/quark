@@ -24,7 +24,7 @@ import (
 
 type ClusterInstanceList []ClusterInstance
 
-func (cil ClusterInstanceList) AsClusterMemberList(log *logging.Logger, isEtcdProxy func(ClusterInstance) bool) (ClusterMemberList, error) {
+func (cil ClusterInstanceList) AsClusterMemberList(log *logging.Logger, isEtcdProxy func(ClusterInstance) (bool, error)) (ClusterMemberList, error) {
 	wg := sync.WaitGroup{}
 	errors := make(chan error, len(cil))
 	memberChan := make(chan ClusterMember, len(cil))
@@ -37,8 +37,13 @@ func (cil ClusterInstanceList) AsClusterMemberList(log *logging.Logger, isEtcdPr
 				errors <- maskAny(err)
 				return
 			}
-			if (isEtcdProxy != nil) && isEtcdProxy(instance) {
-				member.EtcdProxy = true
+			if isEtcdProxy != nil {
+				etcdProxy, err := isEtcdProxy(instance)
+				if err != nil {
+					errors <- maskAny(err)
+					return
+				}
+				member.EtcdProxy = etcdProxy
 			}
 			memberChan <- member
 		}(instance)
@@ -132,4 +137,64 @@ func (cil ClusterInstanceList) CreateClusterIP(cidr string) (net.IP, error) {
 		}
 	}
 	return net.IP{}, maskAny(fmt.Errorf("no free IP left in '%s'", cidr))
+}
+
+// GetClusterID loads the cluster ID from any of the instances in the given list
+func (cil ClusterInstanceList) GetClusterID(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		result, err := i.GetClusterID(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get cluster IP from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get cluster IP"))
+}
+
+// GetVaultCrt loads the vault certificate from any of the instances in the given list
+func (cil ClusterInstanceList) GetVaultCrt(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		result, err := i.GetVaultCrt(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get vault certificate from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get vault certificate"))
+}
+
+// GetVaultAddr loads the vault address from any of the instances in the given list
+func (cil ClusterInstanceList) GetVaultAddr(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		result, err := i.GetVaultAddr(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get vault address from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get vault address"))
+}
+
+// AddEtcdMember calls etcdctl to add a member to ETCD on any of the instances in the given list
+func (cil ClusterInstanceList) AddEtcdMember(log *logging.Logger, name, clusterIP string) error {
+	for _, i := range cil {
+		err := i.AddEtcdMember(log, name, clusterIP)
+		if err == nil {
+			return nil
+		}
+		log.Warningf("cannot add '%s' to ETCD: %#v", name, err)
+	}
+	return maskAny(fmt.Errorf("cannot add '%s' to ETCD", name))
+}
+
+// RemoveEtcdMember calls etcdctl to remove a member from ETCD on any of the instances in the given list
+func (cil ClusterInstanceList) RemoveEtcdMember(log *logging.Logger, name, clusterIP string) error {
+	for _, i := range cil {
+		err := i.RemoveEtcdMember(log, name, clusterIP)
+		if err == nil {
+			return nil
+		}
+		log.Warningf("cannot remove '%s' from ETCD: %#v", name, err)
+	}
+	return maskAny(fmt.Errorf("cannot remove '%s' from ETCD", name))
 }
