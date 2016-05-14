@@ -70,7 +70,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	if err != nil {
 		Exitf("Failed to find instance '%s'\n", destroyInstanceFlags.String())
 	}
-	machineId, err := toRemove.GetMachineID(log)
+	machineID, err := toRemove.GetMachineID(log)
 	if err != nil {
 		Exitf("Failed to query machine id for instance: %#v", err)
 	}
@@ -80,7 +80,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 	if !isEtcdProxy {
 		remainingInstances := instances.Except(toRemove)
-		if err := remainingInstances[0].RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
+		if err := remainingInstances.RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
 			Exitf("Failed to remove instance '%s' from ETCD\n", destroyInstanceFlags.String())
 		}
 	}
@@ -95,7 +95,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Remove machine from vault
-	if err := newVaultProvider().RemoveMachine(machineId); err != nil {
+	if err := newVaultProvider().RemoveMachine(machineID); err != nil {
 		log.Warningf("Failed to remove machine from vault: %#v", err)
 	}
 
