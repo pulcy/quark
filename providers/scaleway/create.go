@@ -25,6 +25,7 @@ import (
 
 	"github.com/pulcy/quark/providers"
 	"github.com/pulcy/quark/templates"
+	"github.com/pulcy/quark/util"
 )
 
 const (
@@ -38,10 +39,16 @@ const (
 	clusterIPTagIndex = 1 // Index in ScalewayServer.Tags of the cluster IP address (tinc address)
 )
 
-// Create a machine instance
+// CreateInstance creates one new machine instance.
 func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+	// Fetch existing instances
+	existingInstances, err := vp.GetInstances(options.ClusterInfo)
+	if err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+
 	// Create server
-	instance, err := vp.createInstance(log, options, dnsProvider)
+	instance, err := vp.createInstance(log, options, dnsProvider, existingInstances)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
@@ -59,16 +66,50 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 	return instance, nil
 }
 
-// Create a machine instance
-func (vp *scalewayProvider) createInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider) (providers.ClusterInstance, error) {
+// createInstance creates a new instances, runs the bootstrap script and registers the instance
+// in DNS.
+func (vp *scalewayProvider) createInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider, existingInstances providers.ClusterInstanceList) (providers.ClusterInstance, error) {
+	// Create a new machine ID
+	machineID, err := util.GenUUID()
+	if err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+	log.Debugf("created machined-id: %s", machineID)
+
 	// Create server
-	id, err := vp.createServer(options)
+	instance, err := vp.createAndStartServer(options)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
 
+	// Update `cluster-members` file on existing instances.
+	// This ensures that the firewall of the existing instances allows our new instance
+	if len(existingInstances) > 0 {
+		rebootAfter := false
+		clusterMembers, err := existingInstances.AsClusterMemberList(log, nil)
+		if err != nil {
+			return providers.ClusterInstance{}, maskAny(err)
+		}
+		newMember := providers.ClusterMember{
+			ClusterID:     options.ClusterInfo.ID,
+			MachineID:     machineID,
+			ClusterIP:     instance.ClusterIP,
+			PrivateHostIP: instance.PrivateIP,
+			EtcdProxy:     options.EtcdProxy,
+		}
+		clusterMembers = append(clusterMembers, newMember)
+		if err := existingInstances.UpdateClusterMembers(log, clusterMembers, rebootAfter, vp); err != nil {
+			log.Warningf("Failed to update cluster members: %#v", err)
+		}
+	}
+
+	// Bootstrap server
+	if err := vp.bootstrapServer(instance, options, machineID); err != nil {
+		return providers.ClusterInstance{}, maskAny(err)
+	}
+
 	// Wait for the server to be active
-	server, err := vp.waitUntilServerActive(id, false)
+	server, err := vp.waitUntilServerActive(instance.ID, false)
 	if err != nil {
 		return providers.ClusterInstance{}, maskAny(err)
 	}
@@ -90,17 +131,20 @@ func (vp *scalewayProvider) createInstance(log *logging.Logger, options provider
 	return vp.clusterInstance(server, false), nil
 }
 
-// Create a single server
-func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions) (string, error) {
+// createAndStartServer creates a new server and starts it.
+// It then waits until the instance is active.
+func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanceOptions) (providers.ClusterInstance, error) {
+	zeroInstance := providers.ClusterInstance{}
+
 	// Validate input
 	if options.TincIpv4 == "" {
-		return "", maskAny(fmt.Errorf("TincIpv4 is empty"))
+		return zeroInstance, maskAny(fmt.Errorf("TincIpv4 is empty"))
 	}
 
 	// Fetch SSH keys
 	sshKeys, err := providers.FetchSSHKeys(options.SSHKeyGithubAccount)
 	if err != nil {
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	// Create cloud-config
@@ -110,7 +154,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 	ccOpts.SshKeys = sshKeys
 	_ /*userData*/, err = templates.Render(cloudConfigTemplate, ccOpts)
 	if err != nil {
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	var arch string
@@ -125,7 +169,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 	imageIdentifier, err := vp.client.GetImageID(options.ImageID, arch)
 	if err != nil {
 		vp.Logger.Errorf("GetImageID failed: %#v", err)
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	name := options.InstanceName
@@ -144,7 +188,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 		volID, err = vp.client.PostVolume(volDef)
 		if err != nil {
 			vp.Logger.Errorf("PostVolume failed: %#v", err)
-			return "", maskAny(err)
+			return zeroInstance, maskAny(err)
 		}
 	}*/
 
@@ -152,7 +196,7 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 	if options.RoleLoadBalancer && vp.ReserveLoadBalancerIP {
 		ip, err := vp.getFreeIP()
 		if err != nil {
-			return "", maskAny(err)
+			return zeroInstance, maskAny(err)
 		}
 		publicIPIdentifier = ip.ID
 	}
@@ -185,63 +229,71 @@ func (vp *scalewayProvider) createServer(options providers.CreateInstanceOptions
 				vp.Logger.Errorf("DeleteVolume failed: %#v", err)
 			}
 		}
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	// Start server
 	if err := vp.client.PostServerAction(id, "poweron"); err != nil {
 		vp.Logger.Errorf("poweron failed: %#v", err)
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	// Wait until server starts
 	server, err := vp.waitUntilServerActive(id, true)
 	if err != nil {
-		return "", maskAny(err)
+		return zeroInstance, maskAny(err)
 	}
 
 	// Download & copy fleet,etcd
 	instance := vp.clusterInstance(server, true)
+	return instance, nil
+}
+
+// bootstrapServer copies etcd & fleet into the instances and runs the scaleway bootstrap script.
+// It then reboots the instances and waits until it is active again.
+func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, options providers.CreateInstanceOptions, machineID string) error {
 	if err := vp.copyEtcd(instance); err != nil {
 		vp.Logger.Errorf("copy etcd failed: %#v", err)
-		return "", maskAny(err)
+		return maskAny(err)
 	}
 	if err := vp.copyFleet(instance); err != nil {
 		vp.Logger.Errorf("copy fleet failed: %#v", err)
-		return "", maskAny(err)
+		return maskAny(err)
 	}
 
 	// Bootstrap
 	bootstrapOptions := struct {
 		ScalewayProviderConfig
 		providers.CreateInstanceOptions
+		MachineID string
 	}{
 		ScalewayProviderConfig: vp.ScalewayProviderConfig,
 		CreateInstanceOptions:  options,
+		MachineID:              machineID,
 	}
 	bootstrap, err := templates.Render(bootstrapTemplate, bootstrapOptions)
 	if err != nil {
-		return "", maskAny(err)
+		return maskAny(err)
 	}
-	vp.Logger.Infof("Running bootstrap on %s. This may take a while...", server.Name)
+	vp.Logger.Infof("Running bootstrap on %s. This may take a while...", instance.Name)
 	if err := instance.RunScript(vp.Logger, bootstrap, "/root/pulcy-bootstrap.sh"); err != nil {
 		// Failed expected because of a reboot
 		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
 	}
 
-	vp.Logger.Infof("Done running bootstrap on %s, rebooting...", server.Name)
-	if err := vp.client.PostServerAction(id, "reboot"); err != nil {
+	vp.Logger.Infof("Done running bootstrap on %s, rebooting...", instance.Name)
+	if err := vp.client.PostServerAction(instance.ID, "reboot"); err != nil {
 		vp.Logger.Errorf("reboot failed: %#v", err)
-		return "", maskAny(err)
+		return maskAny(err)
 	}
 	time.Sleep(time.Second * 5)
-	if _, err := vp.waitUntilServerActive(id, false); err != nil {
-		return "", maskAny(err)
+	if _, err := vp.waitUntilServerActive(instance.ID, false); err != nil {
+		return maskAny(err)
 	}
 
-	vp.Logger.Infof("Created server %s %s\n", id, name)
+	vp.Logger.Infof("Created server %s %s\n", instance.ID, instance.Name)
 
-	return id, nil
+	return nil
 }
 
 func (vp *scalewayProvider) getFreeIP() (api.ScalewayIPDefinition, error) {
@@ -301,7 +353,7 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 				errors <- maskAny(err)
 				return
 			}
-			instance, err := vp.createInstance(log, instanceOptions, dnsProvider)
+			instance, err := vp.createInstance(log, instanceOptions, dnsProvider, nil)
 			if err != nil {
 				errors <- maskAny(err)
 			} else {

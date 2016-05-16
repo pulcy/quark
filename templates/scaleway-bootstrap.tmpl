@@ -23,6 +23,8 @@ echo $TINCIP >/etc/pulcy/tinc-ip
 
 {{ if .HttpProxy }}
 # Setup HTTP Proxy
+export "http_proxy={{ .HttpProxy }}"
+export "https_proxy={{ .HttpProxy }}"
 echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
 echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
 touch /etc/pulcy/docker.env
@@ -35,8 +37,7 @@ echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98prox
 
 # Create machine-id
 rm -f /etc/.regen-machine-id
-MACHINEID=$(uuidgen -r)
-echo ${MACHINEID//-/} > /etc/machine-id
+echo "{{ .MachineID }}" > /etc/machine-id
 
 # Create core user
 useradd -d /home/core -G docker,systemd-journal -m -U -u 500 -s /bin/bash -p $(uuidgen) core
