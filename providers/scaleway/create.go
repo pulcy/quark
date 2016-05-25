@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/juju/errgo"
 	"github.com/op/go-logging"
 	"github.com/scaleway/scaleway-cli/pkg/api"
 
@@ -166,14 +167,14 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 	}
 
 	// Find image
-	imageIdentifier, err := vp.client.GetImageID(options.ImageID, arch)
+	imageID, err := vp.getImageID(options.ImageID, arch)
 	if err != nil {
-		vp.Logger.Errorf("GetImageID failed: %#v", err)
+		vp.Logger.Errorf("getImageID failed: %#v", err)
 		return zeroInstance, maskAny(err)
 	}
 
 	name := options.InstanceName
-	image := &imageIdentifier.Identifier
+	image := &imageID
 	dynamicIPRequired := !vp.NoIPv4
 	//bootscript := ""
 
@@ -454,4 +455,25 @@ func (p *scalewayProvider) downloadAndCopyToInstance(url string, i providers.Clu
 		return maskAny(err)
 	}
 	return nil
+}
+
+func (p *scalewayProvider) getImageID(imageName, arch string) (string, error) {
+	images, err := p.client.GetImages()
+	if err != nil {
+		return "", maskAny(err)
+	}
+	for _, img := range *images {
+		if img.Name == imageName {
+			for _, v := range img.Versions {
+				if v.ID == img.CurrentPublicVersion {
+					for _, limg := range v.LocalImages {
+						if limg.Arch == arch {
+							return limg.ID, nil
+						}
+					}
+				}
+			}
+		}
+	}
+	return "", maskAny(errgo.WithCausef(nil, NotFoundError, "Image '%s' not found", imageName))
 }

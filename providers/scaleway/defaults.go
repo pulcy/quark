@@ -20,7 +20,7 @@ import (
 
 const (
 	regionParis       = "fr-1"
-	dockerImageID     = "docker"
+	dockerImageID     = "Docker"
 	commercialTypeVC1 = "VC1S"
 	commercialTypeC2S = "C2S"
 	commercialTypeC2M = "C2M"
