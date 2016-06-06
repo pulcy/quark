@@ -61,7 +61,7 @@ echo "127.0.0.1 ${HOST}" >> /etc/hosts
 apt-get -q update                   \
  && apt-get --force-yes -y -qq upgrade  \
  && apt-get --force-yes -y -qq upgrade docker-engine \
- && apt-get --force-yes install -y -q tar tinc \
+ && apt-get --force-yes install -y -q tar tinc systemd-journal-remote \
  && apt-get clean
 
 # Install Fleet
@@ -136,6 +136,7 @@ mkdir -p /etc/systemd/system/docker.service.d
 echo "[Service]" > /etc/systemd/system/docker.service.d/99-docker.conf
 echo "EnvironmentFile=/etc/environment" >> /etc/systemd/system/docker.service.d/99-docker.conf
 systemctl disable docker; systemctl enable docker
+systemctl enable systemd-journal-gatewayd.socket
 
 # Prepare for reboot
 sync
