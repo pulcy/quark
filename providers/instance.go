@@ -190,6 +190,19 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 	return "", maskAny(errgo.New("VAULT_ADDR not found in /etc/pulcy/vault.env"))
 }
 
+func (i ClusterInstance) GetWeaveEnv(log *logging.Logger) (string, error) {
+	log.Debugf("Fetching weave.env on %s", i)
+	id, err := i.runRemoteCommand(log, "cat /etc/pulcy/weave.env", "", false)
+	return id, maskAny(err)
+}
+
+func (i ClusterInstance) GetWeaveSeed(log *logging.Logger) (string, error) {
+	log.Debugf("Fetching weave-seed on %s", i)
+	// weave-seed does not have to exists, so ignore errors by the `|| echo ""` parts.
+	id, err := i.runRemoteCommand(log, "sh -c 'cat /etc/pulcy/weave-seed || echo \"\"'", "", false)
+	return id, maskAny(err)
+}
+
 func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, error) {
 	const prefix = "DISTRIB_RELEASE="
 	log.Debugf("Fetching OS release on %s", i)
@@ -358,6 +371,18 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	}
 	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
 		return maskAny(err)
+	}
+
+	if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/weave.env", cio.WeaveEnv, false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := i.runRemoteCommand(log, "sudo chmod 0400 /etc/pulcy/weave.env", "", false); err != nil {
+		return maskAny(err)
+	}
+	if cio.WeaveSeed != "" {
+		if _, err := i.runRemoteCommand(log, "sudo tee /etc/pulcy/weave-seed", cio.WeaveSeed, false); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	log.Infof("Downloading gluon on %s", i)

@@ -52,6 +52,7 @@ func init() {
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
 	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.HttpProxy, "http-proxy", "", "Address of HTTP proxy to use on instances")
+	cmdCreateCluster.Flags().StringVar(&createClusterFlags.WeavePassword, "weave-password", "", "Password of the weave network")
 	cmdCluster.AddCommand(cmdCreateCluster)
 }
 
@@ -71,6 +72,11 @@ func createCluster(cmd *cobra.Command, args []string) {
 		createClusterFlags.ID = strings.ToLower(uniuri.NewLen(40))
 	} else {
 		createClusterFlags.ID = strings.ToLower(createClusterFlags.ID)
+	}
+
+	// Create weave password if needed
+	if createClusterFlags.WeavePassword == "" {
+		createClusterFlags.WeavePassword = uniuri.NewLen(40)
 	}
 
 	// Validate

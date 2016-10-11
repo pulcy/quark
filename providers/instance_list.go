@@ -175,6 +175,28 @@ func (cil ClusterInstanceList) GetVaultAddr(log *logging.Logger) (string, error)
 	return "", maskAny(fmt.Errorf("cannot get vault address"))
 }
 
+func (cil ClusterInstanceList) GetWeaveEnv(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		result, err := i.GetWeaveEnv(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get weave.env from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get weave.env"))
+}
+
+func (cil ClusterInstanceList) GetWeaveSeed(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		result, err := i.GetWeaveSeed(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get weave-seed from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get weave-seed"))
+}
+
 // AddEtcdMember calls etcdctl to add a member to ETCD on any of the instances in the given list
 func (cil ClusterInstanceList) AddEtcdMember(log *logging.Logger, name, clusterIP string) error {
 	for _, i := range cil {
