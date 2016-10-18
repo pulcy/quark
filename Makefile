@@ -7,7 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD)
 GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)
-VENDORDIR := $(ROOTDIR)/deps
+VENDORDIR := $(ROOTDIR)/vendor
 
 ORGPATH := github.com/pulcy
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
