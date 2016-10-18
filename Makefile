@@ -7,7 +7,7 @@ COMMIT := $(shell git rev-parse --short HEAD)
 GOBUILDDIR := $(SCRIPTDIR)/.gobuild
 SRCDIR := $(SCRIPTDIR)
 BINDIR := $(ROOTDIR)
-VENDORDIR := $(ROOTDIR)/deps
+VENDORDIR := $(ROOTDIR)/vendor
 
 ORGPATH := github.com/pulcy
 ORGDIR := $(GOBUILDDIR)/src/$(ORGPATH)
@@ -50,7 +50,7 @@ $(GOBUILDDIR):
 
 update-vendor:
 	@rm -Rf $(VENDORDIR)
-	@pulsar go vendor -V $(VENDORDIR) \
+	@pulsar go vendor --flatten -V $(VENDORDIR) \
 		github.com/coreos/go-semver \
 		github.com/dchest/uniuri \
 		github.com/digitalocean/godo \
