@@ -6,6 +6,20 @@ remove machines from existing clusters.
 The generated clusters are configured such that fleet jobs can be scheduled on them as soon
 as Quark has finished.
 
+## Building 
+
+```
+go get -u github.com/pulcy/quark
+```
+
+or 
+
+```
+git clone https://github.com/pulcy/quark.git
+cd quark
+make 
+```
+
 ## Show all DNS records
 
 ```
