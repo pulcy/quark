@@ -5,4 +5,4 @@ go:
   - tip
 
 install:
-  - go install github.com/pulcy/pulsar
+  - go get github.com/pulcy/pulsar
