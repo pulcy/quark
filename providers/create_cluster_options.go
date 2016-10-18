@@ -41,6 +41,7 @@ type CreateClusterOptions struct {
 	VaultCertificatePath    string // Path of the vault ca-cert file
 	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	HttpProxy               string // Address of the http proxy to use (if any)
+	WeavePassword           string // Encryption password of weave network
 
 	instancePrefixes []string
 }
@@ -103,6 +104,8 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		TincCIDR:                o.TincCIDR,
 		TincIpv4:                tincAddress,
 		HttpProxy:               o.HttpProxy,
+		WeaveEnv:                fmt.Sprintf("WEAVE_PASSWORD=%s", o.WeavePassword),
+		WeaveSeed:               "", // Will be initialized to core member names by gluon
 	}
 	io.SetupNames(o.instancePrefixes[instanceIndex-1], o.Name, o.Domain)
 	return io, nil
@@ -148,6 +151,9 @@ func (cco CreateClusterOptions) Validate() error {
 	}
 	if cco.VaultCertificatePath == "" {
 		return errors.New("Please specify a vault-cacert")
+	}
+	if cco.WeavePassword == "" {
+		return errors.New("Please specify a weave-password")
 	}
 	return nil
 }

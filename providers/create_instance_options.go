@@ -48,6 +48,8 @@ type CreateInstanceOptions struct {
 	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	TincIpv4                string // IP addres of tun0 (tinc) on this instance
 	HttpProxy               string // Address of the http proxy to use (if any)
+	WeaveEnv                string // Content of weave.env
+	WeaveSeed               string // Content of weave-seed
 }
 
 // SetupNames configured the ClusterName and InstanceName of the given options
@@ -137,5 +139,9 @@ func (cio CreateInstanceOptions) Validate(validateVault bool) error {
 			return errors.New("Please specify a vault-cacert")
 		}
 	}
+	if cio.WeaveEnv == "" {
+		return errors.New("Please specify a weave.env")
+	}
+	// Note WeaveSeed is allowed to be empty
 	return nil
 }

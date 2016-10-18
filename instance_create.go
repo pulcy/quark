@@ -103,6 +103,20 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 	createInstanceFlags.SetVaultCertificate(vaultCACert)
 
+	// Fetch weave.env
+	weaveEnv, err := instances.GetWeaveEnv(log)
+	if err != nil {
+		Exitf("Failed to get weave.env: %v\n", err)
+	}
+	createInstanceFlags.WeaveEnv = weaveEnv
+
+	// Fetch weave-seed
+	weaveSeed, err := instances.GetWeaveSeed(log)
+	if err != nil {
+		Exitf("Failed to get weave-seed: %v\n", err)
+	}
+	createInstanceFlags.WeaveSeed = weaveSeed
+
 	// Setup instance index
 	if createInstanceFlags.InstanceIndex == 0 {
 		createInstanceFlags.InstanceIndex = len(instances) + 1
