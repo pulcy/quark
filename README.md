@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.org/pulcy/quark.svg?branch=master)](https://travis-ci.org/pulcy/quark)
+
 # Quark: Pulcy cluster & instance creator
 
 Quark is used to create new clusters (of machines), add machines to existing clusters or
