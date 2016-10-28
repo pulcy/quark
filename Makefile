@@ -18,7 +18,7 @@ BIN := $(BINDIR)/$(PROJECT)
 GOBINDATA := $(GOBUILDDIR)/bin/go-bindata
 
 GOPATH := $(GOBUILDDIR)
-GOVERSION := 1.7.1-alpine
+GOVERSION := 1.7.3-alpine
 
 ifndef GOOS
 	GOOS := $(shell go env GOOS)
