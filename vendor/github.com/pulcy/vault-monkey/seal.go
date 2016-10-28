@@ -31,11 +31,11 @@ func init() {
 }
 
 func cmdSealRun(cmd *cobra.Command, args []string) {
-	vs, err := adminLogin()
+	vs, c, err := adminLogin()
 	if err != nil {
 		Exitf("Failed to create vault service: %#v", err)
 	}
-	if err := vs.Seal(); err != nil {
+	if err := vs.Seal(c); err != nil {
 		Exitf("Failed to seal vault: %#v", err)
 	}
 }

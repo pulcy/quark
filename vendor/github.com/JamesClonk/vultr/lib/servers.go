@@ -50,6 +50,8 @@ type ServerOptions struct {
 	PrivateNetworking    bool
 	AutoBackups          bool
 	DontNotifyOnActivate bool
+	Hostname             string
+	Tag                  string
 }
 
 // V6Network represents a IPv6 network of a Vultr server
@@ -57,6 +59,12 @@ type V6Network struct {
 	Network     string `json:"v6_network"`
 	MainIP      string `json:"v6_main_ip"`
 	NetworkSize string `json:"v6_network_size"`
+}
+
+// ISOStatus represents an ISO image attached to a Vultr server
+type ISOStatus struct {
+	State string `json:"state"`
+	ISOID string `json:"ISOID"`
 }
 
 // UnmarshalJSON implements json.Unmarshaller on Server.
@@ -254,6 +262,14 @@ func (c *Client) CreateServer(name string, regionID, planID, osID int, options *
 		if options.DontNotifyOnActivate {
 			values.Set("notify_activate", "no")
 		}
+
+		if options.Hostname != "" {
+			values.Add("hostname", options.Hostname)
+		}
+
+		if options.Tag != "" {
+			values.Add("tag", options.Tag)
+		}
 	}
 
 	var server Server
@@ -333,6 +349,36 @@ func (c *Client) ChangeOSofServer(id string, osID int) error {
 		return err
 	}
 	return nil
+}
+
+func (c *Client) AttachISOtoServer(id string, isoID int) error {
+	values := url.Values{
+		"SUBID": {id},
+		"ISOID": {fmt.Sprintf("%v", isoID)},
+	}
+
+	if err := c.post(`server/iso_attach`, values, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Client) DetachISOfromServer(id string) error {
+	values := url.Values{
+		"SUBID": {id},
+	}
+
+	if err := c.post(`server/iso_detach`, values, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *Client) GetISOStatusofServer(id string) (isoStatus ISOStatus, err error) {
+	if err := c.get(`server/iso_status?SUBID=`+id, &isoStatus); err != nil {
+		return ISOStatus{}, err
+	}
+	return isoStatus, nil
 }
 
 func (c *Client) ListOSforServer(id string) (os []OS, err error) {

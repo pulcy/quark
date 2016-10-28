@@ -19,7 +19,9 @@ import (
 )
 
 const (
-	regionParis       = "fr-1"
+	regionParis1      = "par1"
+	regionAmsterdam1  = "ams1"
+	regionDefault     = regionParis1
 	dockerImageID     = "Docker"
 	commercialTypeVC1 = "VC1S"
 	commercialTypeC2S = "C2S"
@@ -40,7 +42,7 @@ func (vp *scalewayProvider) ClusterDefaults(options providers.ClusterInfo) provi
 // Apply defaults for the given options
 func (vp *scalewayProvider) CreateInstanceDefaults(options providers.CreateInstanceOptions) providers.CreateInstanceOptions {
 	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
-	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	options.InstanceConfig = vp.instanceConfigDefaults(options.InstanceConfig)
 	if options.TincIpv4 == "" && options.TincCIDR != "" {
 		instances, err := vp.GetInstances(options.ClusterInfo)
 		if err != nil {
@@ -63,7 +65,7 @@ func (vp *scalewayProvider) CreateInstanceDefaults(options providers.CreateInsta
 // Apply defaults for the given options
 func (vp *scalewayProvider) CreateClusterDefaults(options providers.CreateClusterOptions) providers.CreateClusterOptions {
 	options.ClusterInfo = vp.ClusterDefaults(options.ClusterInfo)
-	options.InstanceConfig = instanceConfigDefaults(options.InstanceConfig)
+	options.InstanceConfig = vp.instanceConfigDefaults(options.InstanceConfig)
 	if options.SSHKeyGithubAccount == "" {
 		options.SSHKeyGithubAccount = "-"
 	}
@@ -73,9 +75,9 @@ func (vp *scalewayProvider) CreateClusterDefaults(options providers.CreateCluste
 	return options
 }
 
-func instanceConfigDefaults(ic providers.InstanceConfig) providers.InstanceConfig {
+func (vp *scalewayProvider) instanceConfigDefaults(ic providers.InstanceConfig) providers.InstanceConfig {
 	if ic.RegionID == "" {
-		ic.RegionID = regionParis
+		ic.RegionID = vp.Region
 	}
 	if ic.ImageID == "" {
 		ic.ImageID = dockerImageID

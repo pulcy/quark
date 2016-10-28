@@ -45,10 +45,13 @@ func init() {
 	cmdRun.Flag.BoolVar(&runDetachFlag, []string{"d", "-detach"}, false, "Run server in background and print server ID")
 	cmdRun.Flag.StringVar(&runGateway, []string{"g", "-gateway"}, "", "Use a SSH gateway")
 	cmdRun.Flag.StringVar(&runUserdatas, []string{"u", "-userdata"}, "", "Start a server with userdata predefined")
-	cmdRun.Flag.StringVar(&runCommercialType, []string{"-commercial-type"}, "VC1S", "Start a server with specific commercial-type C1, VC1S, C2[SML]")
+	cmdRun.Flag.StringVar(&runCommercialType, []string{"-commercial-type"}, "VC1S", "Start a server with specific commercial-type C1, VC1[S|M|L], C2[S|M|L]")
+	cmdRun.Flag.StringVar(&runSSHUser, []string{"-user"}, "root", "Specify SSH User")
 	cmdRun.Flag.BoolVar(&runAutoRemove, []string{"-rm"}, false, "Automatically remove the server when it exits")
+	cmdRun.Flag.BoolVar(&runIPV6, []string{"-ipv6"}, false, "Enable IPV6")
 	cmdRun.Flag.BoolVar(&runTmpSSHKey, []string{"-tmp-ssh-key"}, false, "Access your server without uploading your SSH key to your account")
 	cmdRun.Flag.BoolVar(&runShowBoot, []string{"-show-boot"}, false, "Allows to show the boot")
+	cmdRun.Flag.IntVar(&runSSHPort, []string{"-p", "-port"}, 22, "Specify SSH port")
 	// FIXME: handle start --timeout
 }
 
@@ -67,7 +70,11 @@ var runUserdatas string        // -u, --userdata flag
 var runCommercialType string   // --commercial-type flag
 var runTmpSSHKey bool          // --tmp-ssh-key flag
 var runShowBoot bool           // --show-boot flag
+var runIPV6 bool               // --ipv6 flag
 var runTimeout int64           // --timeout flag
+var runSetState string         // --set-state flag
+var runSSHUser string          // --user flag
+var runSSHPort int             // -p, --port flag
 
 func runRun(cmd *Command, rawArgs []string) error {
 	if runHelpFlag {
@@ -113,6 +120,10 @@ func runRun(cmd *Command, rawArgs []string) error {
 		Timeout:        runTimeout,
 		Userdata:       runUserdatas,
 		CommercialType: runCommercialType,
+		State:          runSetState,
+		IPV6:           runIPV6,
+		SSHUser:        runSSHUser,
+		SSHPort:        runSSHPort,
 		// FIXME: Timeout
 	}
 

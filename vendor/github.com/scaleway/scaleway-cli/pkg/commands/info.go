@@ -26,7 +26,6 @@ func RunInfo(ctx CommandContext, args InfoArgs) error {
 
 	fmt.Fprintf(ctx.Stdout, "Organization:\t\t%s\n", ctx.API.Organization)
 	// FIXME: add partially-masked token
-	fmt.Fprintf(ctx.Stdout, "API Endpoint:\t\t%s\n", api.ComputeAPI)
 	configPath, _ := config.GetConfigFilePath()
 	fmt.Fprintf(ctx.Stdout, "RC file:\t\t%s\n", configPath)
 	fmt.Fprintf(ctx.Stdout, "User:\t\t\t%s\n", ctx.Getenv("USER"))
@@ -95,5 +94,11 @@ func RunInfo(ctx CommandContext, args InfoArgs) error {
 	for key, value := range quotas.Quotas {
 		fmt.Fprintf(ctx.Stdout, "  %-20s: %d\n", key, value)
 	}
+	fmt.Fprintf(ctx.Stdout, "\n")
+	fmt.Fprintln(ctx.Stdout, "Urls:")
+	// TODO: add endpoint API by region
+	fmt.Fprintf(ctx.Stdout, "  account: %s\n", api.AccountAPI)
+	fmt.Fprintf(ctx.Stdout, "  metadata: %s\n", api.MetadataAPI)
+	fmt.Fprintf(ctx.Stdout, "  marketplace: %s\n", api.MarketplaceAPI)
 	return nil
 }
