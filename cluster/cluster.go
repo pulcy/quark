@@ -34,6 +34,8 @@ type Cluster struct {
 	Tunnel string `mapstructure:"tunnel,omitempty"`
 	// Size of the cluster (in instances==machines)
 	InstanceCount int `mapstructure:"instance-count,omitempty"`
+	// Default network type
+	Network string `mapstructure:"network,omitempty"`
 
 	// Quark options
 	QuarkOptions QuarkOptions

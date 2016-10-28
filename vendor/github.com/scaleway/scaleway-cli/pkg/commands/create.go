@@ -8,19 +8,21 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/scaleway/scaleway-cli/pkg/api"
 )
 
 // CreateArgs are arguments passed to `RunCreate`
 type CreateArgs struct {
+	Volumes        []string
+	Tags           []string
 	Name           string
 	Bootscript     string
-	Tags           []string
-	Volumes        []string
 	Image          string
-	TmpSSHKey      bool
 	IP             string
 	CommercialType string
+	TmpSSHKey      bool
+	IPV6           bool
 }
 
 // RunCreate is the handler for 'scw create'
@@ -43,6 +45,7 @@ func RunCreate(ctx CommandContext, args CreateArgs) error {
 		DynamicIPRequired: false,
 		IP:                args.IP,
 		CommercialType:    args.CommercialType,
+		EnableIPV6:        args.IPV6,
 	}
 	if args.IP == "dynamic" || args.IP == "" {
 		config.DynamicIPRequired = true
@@ -54,7 +57,9 @@ func RunCreate(ctx CommandContext, args CreateArgs) error {
 	if err != nil {
 		return err
 	}
-
+	logrus.Debugf("Server created: %s", serverID)
+	logrus.Debugf("PublicDNS %s", serverID+api.URLPublicDNS)
+	logrus.Debugf("PrivateDNS %s", serverID+api.URLPrivateDNS)
 	fmt.Fprintln(ctx.Stdout, serverID)
 	return nil
 }

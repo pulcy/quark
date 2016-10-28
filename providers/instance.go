@@ -225,7 +225,7 @@ func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, erro
 
 func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
 	log.Debugf("Fetching etcd proxy status on %s", i)
-	cat, err := i.runRemoteCommand(log, "systemctl cat etcd2.service", "", false)
+	cat, err := i.runRemoteCommand(log, "sudo systemctl cat etcd2.service", "", false)
 	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
 }
 

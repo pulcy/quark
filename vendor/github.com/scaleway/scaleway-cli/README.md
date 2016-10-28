@@ -8,6 +8,11 @@ Interact with Scaleway API from the command line.
 ![License](https://img.shields.io/github/license/scaleway/scaleway-cli.svg)
 ![Release](https://img.shields.io/github/release/scaleway/scaleway-cli.svg)
 [![IRC](https://www.irccloud.com/invite-svg?channel=%23scaleway&amp;hostname=irc.online.net&amp;port=6697&amp;ssl=1)](https://www.irccloud.com/invite?channel=%23scaleway&amp;hostname=irc.online.net&amp;port=6697&amp;ssl=1)
+[![Go Report Card](https://goreportcard.com/badge/github.com/scaleway/scaleway-cli)](https://goreportcard.com/report/github.com/scaleway/scaleway-cli)
+
+![Scaleway](https://raw.githubusercontent.com/scaleway/scaleway-cli/master/assets/scaleway.png)
+
+#### Quick look
 
 ![Scaleway CLI demo](https://raw.githubusercontent.com/scaleway/scaleway-cli/master/assets/terminal-main-demo.gif)
 
@@ -100,7 +105,7 @@ mkdir -p /usr/local/bin
 mv /usr/local/bin/scw /tmp/scw.old
 
 # get latest release
-wget "https://github.com/scaleway/scaleway-cli/releases/download/v1.7.1/scw_1.7.1_darwin_amd64.zip" -O /tmp/scw.zip
+wget "https://github.com/scaleway/scaleway-cli/releases/download/v1.9.0/scw_1.9.0_darwin_amd64.zip" -O /tmp/scw.zip
 unzip /tmp/scw.zip \*/scw -d /tmp
 mv /tmp/scw_*/scw /usr/local/bin
 rm -rf /tmp/scw.zip /tmp/scw_*_darwin_amd64
@@ -114,7 +119,7 @@ Install the latest release on Linux:
 ```bash
 # get latest release
 export ARCH=amd64  # can be 'i386', 'amd64' or 'armhf'
-wget "https://github.com/scaleway/scaleway-cli/releases/download/v1.7.1/scw_1.7.1_${ARCH}.deb" -O /tmp/scw.deb
+wget "https://github.com/scaleway/scaleway-cli/releases/download/v1.9.0/scw_1.9.0_${ARCH}.deb" -O /tmp/scw.deb
 dpkg -i /tmp/scw.deb && rm -f /tmp/scw.deb
 
 # test
@@ -177,6 +182,7 @@ Options:
  -q, --quiet=false            Enable quiet mode
  --sensitive=false            Show sensitive data in outputs, i.e. API Token/Organization
  -v, --version=false          Print version information and quit
+ --region=par1                Change the default region (e.g. ams1)
 
 Commands:
     help      help of the scw command line
@@ -289,6 +295,8 @@ Options:
 
   -g, --gateway=""      Use a SSH gateway
   -h, --help=false      Print usage
+  --p, --port=22        Specify SSH port
+  --user=root           Specify SSH user
 
 Examples:
 
@@ -318,8 +326,8 @@ Create a new server but do not start it.
 Options:
 
   --bootscript=""        Assign a bootscript
-  --commercial-type=VC1S Create a server with specific commercial-type C1, VC1S, C2[S|M|L]
-  -e, --env=""           Provide metadata tags passed to initrd (i.e., boot=resue INITRD_DEBUG=1)
+  --commercial-type=VC1S Create a server with specific commercial-type C1, VC1[S|M|L], C2[S|M|L]
+  -e, --env=""           Provide metadata tags passed to initrd (i.e., boot=rescue INITRD_DEBUG=1)
   -h, --help=false       Print usage
   --ip-address=dynamic   Assign a reserved public IP, a 'dynamic' one or 'none'
   --name=""              Assign a name
@@ -361,7 +369,9 @@ Options:
 
   -g, --gateway=""      Use a SSH gateway
   -h, --help=false      Print usage
+  --p, --port=22        Specify SSH port
   -T, --timeout=0       Set timeout values to seconds
+  --user=root           Specify SSH user
   -w, --wait=false      Wait for SSH to be ready
 
 Examples:
@@ -556,6 +566,8 @@ Options:
 
   -g, --gateway=""      Use a SSH gateway
   -h, --help=false      Print usage
+  --p, --port=22        Specify SSH port
+  --user=root           Specify SSH user
 ```
 
 
@@ -570,6 +582,8 @@ Options:
 
   -g, --gateway=""      Use a SSH gateway
   -h, --help=false      Print usage
+  --p, --port=22        Specify SSH port
+  --user=root           Specify SSH user
 ```
 
 
@@ -692,21 +706,24 @@ Run a command in a new server.
 
 Options:
 
-  -a, --attach=false     Attach to serial console
-  --bootscript=""        Assign a bootscript
-  --commercial-type=VC1S Start a server with specific commercial-type C1, VC1S, C2[SML]
-  -d, --detach=false     Run server in background and print server ID
-  -e, --env=""           Provide metadata tags passed to initrd (i.e., boot=rescue INITRD_DEBUG=1)
-  -g, --gateway=""       Use a SSH gateway
-  -h, --help=false       Print usage
-  --ip-address=""        Assign a reserved public IP, a 'dynamic' one or 'none' (default to 'none' if gateway specified, 'dynamic' otherwise)
-  --name=""              Assign a name
-  --rm=false             Automatically remove the server when it exits
-  --show-boot=false      Allows to show the boot
-  -T, --timeout=0        Set timeout value to seconds
-  --tmp-ssh-key=false    Access your server without uploading your SSH key to your account
-  -u, --userdata=""      Start a server with userdata predefined
-  -v, --volume=""        Attach additional volume (i.e., 50G)
+  -a, --attach=false    Attach to serial console
+  --bootscript=""       Assign a bootscript
+  --commercial-type=VC1S Start a server with specific commercial-type C1, VC1[S|M|L], C2[S|M|L]
+  -d, --detach=false    Run server in background and print server ID
+  -e, --env=""          Provide metadata tags passed to initrd (i.e., boot=rescue INITRD_DEBUG=1)
+  -g, --gateway=""      Use a SSH gateway
+  -h, --help=false      Print usage
+  --ip-address=""       Assign a reserved public IP, a 'dynamic' one or 'none' (default to 'none' if gateway specified, 'dynamic' otherwise)
+  --ipv6=false          Enable IPV6
+  --name=""             Assign a name
+  --p, --port=22        Specify SSH port
+  --rm=false            Automatically remove the server when it exits
+  --show-boot=false     Allows to show the boot
+  -T, --timeout=0       Set timeout value to seconds
+  --tmp-ssh-key=false   Access your server without uploading your SSH key to your account
+  -u, --userdata=""     Start a server with userdata predefined
+  --user=root           Specify SSH User
+  -v, --volume=""       Attach additional volume (i.e., 50G)
 
 Examples:
 
@@ -823,6 +840,8 @@ Options:
 
   -g, --gateway=""      Use a SSH gateway
   -h, --help=false      Print usage
+  --p, --port=22        Specify SSH port
+  --user=root           Specify SSH user
 ```
 
 
@@ -1184,6 +1203,55 @@ $ scw inspect myserver | jq '.[0].public_ip.address'
 
 ### master (unreleased)
 
+* No entry
+
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.11...master)
+
+### v1.11 (2016-10-27)
+
+* new Compute URL `api.scaleway.com` -> `cp-par1.scaleway.com`
+* new TTY URL `tty.scaleway.com/v2` -> `tty-par1.scaleway.com/v2`
+* Region: add `ams1`, you can start a server at Amsterdam with `scw --region="ams1" run yakkety`
+* API: Support multi-zone
+* API: Add ZoneID field in server location
+* `scw image -a -f type=volume` fix unmarshal error on size field
+* `scw ps` do not display empty server with --filter
+
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.10.1...v1.11)
+
+### v1.10.1 (2016-10-24)
+
+* `scw login` fix CheckCredentials ([418](https://github.com/scaleway/scaleway-cli/issues/418))
+
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.10...v1.10.1)
+
+### v1.10 (2016-10-24)
+
+* API rename `deleteServerSafe` -> `deleteServerForce`
+* API support paginate
+* API more verbose with `-V`
+* Better handling of secondary volumes size ([361](https://github.com/scaleway/scaleway-cli/issues/361))
+* Add a global flag, `--region` to change the defaut region
+* `scw exec --gateway` remove hardcoded 30 seconds sleep ([#254](https://github.com/scaleway/scaleway-cli/issues/254))
+* `ScalewayServer` add DNS fields ([#157](https://github.com/scaleway/scaleway-cli/issues/157))
+* `scw [logs|exec|cp|port|run|top]` add `--user` && `--port` ([#396](https://github.com/scaleway/scaleway-cli/issues/396))
+* `scw ps` sort the servers by CreationDate ([#391](https://github.com/scaleway/scaleway-cli/issues/391))
+* Fix regression on bootscript ([#387](https://github.com/scaleway/scaleway-cli/issues/387))
+* `scw [run|start]` Add `--set-state` flag
+* `scw login` Add motd when you are already logged ([#371](https://github.com/scaleway/scaleway-cli/issues/371))
+* `scw _ips` add --detach flag
+* API add DetachIP method ([@nicolai86](https://github.com/scaleway/scaleway-cli/pull/378))
+* Cache remove log dependency
+* Fix error message with `--commercial-type=c2m` ([#374](https://github.com/scaleway/scaleway-cli/issues/374))
+* Add Logger Interface to avoid multiples dependencies in the API, thank you [@nicolai86](https://github.com/nicolai86) ([#369](https://github.com/scaleway/scaleway-cli/pull/369))
+* `scw run` handle `--ipv6` flag
+* `scw create` handle `--ipv6` flag
+* Fix panic when the commercial-type is lower than 2 characters ([#365](https://github.com/scaleway/scaleway-cli/issues/365))
+* gotty-client enable ProxyFromEnviromnent ([#363](https://github.com/scaleway/scaleway-cli/pull/363)) ([@debovema](https://github.com/debovema))
+* `scw inspect` fix panic ([#353](https://github.com/scaleway/scaleway-cli/issues/353))
+* Clear cache between the releases ([#329](https://github.com/scaleway/scaleway-cli/issues/329))
+* Fix `scw _patch bootscript` nil dereference
+* Fix `scw images` bad error message ([#336](https://github.com/scaleway/scaleway-cli/issues/337))
 * Fix sshExecCommand with Windows ([#338](https://github.com/scaleway/scaleway-cli/issues/338))
 * Fix `scw login` with Windows ([#341](https://github.com/scaleway/scaleway-cli/issues/341))
 * Add `enable_ipv6` field ([#334](https://github.com/scaleway/scaleway-cli/issues/334))
@@ -1191,8 +1259,9 @@ $ scw inspect myserver | jq '.[0].public_ip.address'
 * Add `ScalewayIPV6Definition`
 * Add marketplace alias in the cache to resolve image ([#330](https://github.com/scaleway/scaleway-cli/issues/330))
 * `scw _userdata` handles `@~/path/to/file` ([#321](https://github.com/scaleway/scaleway-cli/issues/321))
+* Update `scw _billing` for new instance types ([#293](https://github.com/scaleway/scaleway-cli/issues/293))
 
-View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.9.0...master)
+View full [commits list](https://github.com/scaleway/scaleway-cli/compare/v1.9.0...v1.10)
 
 ### v1.9.0 (2016-04-01)
 

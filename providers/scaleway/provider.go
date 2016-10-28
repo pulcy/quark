@@ -16,6 +16,7 @@ package scaleway
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/op/go-logging"
 	"github.com/scaleway/scaleway-cli/pkg/api"
@@ -29,6 +30,7 @@ type ScalewayProviderConfig struct {
 	// Authentication
 	Organization string
 	Token        string
+	Region       string
 	FleetVersion string
 	EtcdVersion  string
 
@@ -46,7 +48,12 @@ type scalewayProvider struct {
 
 // NewConfig initializes a default set of provider configuration options
 func NewConfig() ScalewayProviderConfig {
+	region := os.Getenv("QUARK_SCALEWAY_REGION")
+	if region == "" {
+		region = regionDefault
+	}
 	return ScalewayProviderConfig{
+		Region:                region,
 		FleetVersion:          defaultFleetVersion,
 		EtcdVersion:           defaultEtcdVersion,
 		ReserveLoadBalancerIP: true,
@@ -62,10 +69,14 @@ func NewProvider(logger *logging.Logger, config ScalewayProviderConfig) (provide
 	if config.Token == "" {
 		return nil, maskAny(fmt.Errorf("Token not set"))
 	}
-	client, err := api.NewScalewayAPI(config.Organization, config.Token, "quark")
+	if config.Region == "" {
+		return nil, maskAny(fmt.Errorf("Region not set"))
+	}
+	client, err := api.NewScalewayAPI(config.Organization, config.Token, "quark", config.Region)
 	if err != nil {
 		return nil, maskAny(err)
 	}
+	client.Logger = NewScalewayLogger(logger)
 	return &scalewayProvider{
 		ScalewayProviderConfig: config,
 		Logger:                 logger,

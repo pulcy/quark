@@ -30,12 +30,16 @@ type RunArgs struct {
 	Volumes        []string
 	Userdata       string
 	CommercialType string
+	State          string
+	SSHUser        string
 	Timeout        int64
+	SSHPort        int
 	AutoRemove     bool
 	TmpSSHKey      bool
 	ShowBoot       bool
 	Detach         bool
 	Attach         bool
+	IPV6           bool
 }
 
 // AddSSHKeyToTags adds the ssh key in the tags
@@ -64,7 +68,7 @@ func AddSSHKeyToTags(ctx CommandContext, tags *[]string, image string) error {
 			break
 		}
 	}
-	*tags = append(*tags, strings.Join([]string{"AUTHORIZED_KEY", string(data[:len(data)])}, "="))
+	*tags = append(*tags, strings.Join([]string{"AUTHORIZED_KEY", string(data[:])}, "="))
 	return nil
 }
 
@@ -95,10 +99,10 @@ func addUserData(ctx CommandContext, userdatas []string, serverID string) {
 	}
 }
 
-func runShowBoot(ctx CommandContext, args RunArgs, serverID string, closeTimeout chan struct{}, timeoutExit chan struct{}) error {
+func runShowBoot(ctx CommandContext, args RunArgs, serverID, region string, closeTimeout chan struct{}, timeoutExit chan struct{}) error {
 	// Attach to server serial
 	logrus.Info("Attaching to server console ...")
-	gottycli, done, err := utils.AttachToSerial(serverID, ctx.API.Token)
+	gottycli, done, err := utils.AttachToSerial(serverID, ctx.API.Token, ctx.API.ResolveTTYUrl())
 	if err != nil {
 		close(closeTimeout)
 		return fmt.Errorf("cannot attach to server serial: %v", err)
@@ -132,7 +136,7 @@ func runShowBoot(ctx CommandContext, args RunArgs, serverID string, closeTimeout
 		}
 		server := sshConnection.server
 		logrus.Info("Connecting to server ...")
-		if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, []string{}, false, gateway); err != nil {
+		if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, args.SSHUser, args.SSHPort, []string{}, false, gateway); err != nil {
 			return fmt.Errorf("Connection to server failed: %v", err)
 		}
 	}
@@ -165,6 +169,7 @@ func Run(ctx CommandContext, args RunArgs) error {
 		DynamicIPRequired: false,
 		IP:                args.IP,
 		CommercialType:    args.CommercialType,
+		EnableIPV6:        args.IPV6,
 	}
 	if args.IP == "dynamic" || (args.IP == "" && args.Gateway == "") {
 		config.DynamicIPRequired = true
@@ -177,9 +182,11 @@ func Run(ctx CommandContext, args RunArgs) error {
 		return fmt.Errorf("failed to create server: %v", err)
 	}
 	logrus.Infof("Server created: %s", serverID)
+	logrus.Debugf("PublicDNS %s", serverID+api.URLPublicDNS)
+	logrus.Debugf("PrivateDNS %s", serverID+api.URLPrivateDNS)
 
 	if args.AutoRemove {
-		defer ctx.API.DeleteServerSafe(serverID)
+		defer ctx.API.DeleteServerForce(serverID)
 	}
 
 	// start SERVER
@@ -213,12 +220,33 @@ func Run(ctx CommandContext, args RunArgs) error {
 			}
 		}()
 	}
+	if args.State != "" {
+		go func() {
+			for {
+				server, err := ctx.API.GetServer(serverID)
+				if err != nil {
+					logrus.Errorf("%s", err)
+					return
+				}
+				if server.StateDetail == "kernel-started" {
+					err = ctx.API.PatchServer(serverID, api.ScalewayServerPatchDefinition{
+						StateDetail: &args.State,
+					})
+					if err != nil {
+						logrus.Errorf("%s", err)
+					}
+					return
+				}
+				time.Sleep(1 * time.Second)
+			}
+		}()
+	}
 	if args.ShowBoot {
-		return runShowBoot(ctx, args, serverID, closeTimeout, timeoutExit)
+		return runShowBoot(ctx, args, serverID, ctx.API.Region, closeTimeout, timeoutExit)
 	} else if args.Attach {
 		// Attach to server serial
 		logrus.Info("Attaching to server console ...")
-		gottycli, done, err := utils.AttachToSerial(serverID, ctx.API.Token)
+		gottycli, done, err := utils.AttachToSerial(serverID, ctx.API.Token, ctx.API.ResolveTTYUrl())
 		close(closeTimeout)
 		if err != nil {
 			return fmt.Errorf("cannot attach to server serial: %v", err)
@@ -248,15 +276,15 @@ func Run(ctx CommandContext, args RunArgs) error {
 			// exec -w SERVER COMMAND ARGS...
 			if len(args.Command) < 1 {
 				logrus.Info("Connecting to server ...")
-				if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, []string{}, false, gateway); err != nil {
+				if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, args.SSHUser, args.SSHPort, []string{}, false, gateway); err != nil {
 					return fmt.Errorf("Connection to server failed: %v", err)
 				}
 			} else {
 				logrus.Infof("Executing command: %s ...", args.Command)
-				if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, args.Command, false, gateway); err != nil {
+				if err = utils.SSHExec(server.PublicAddress.IP, server.PrivateIP, args.SSHUser, args.SSHPort, args.Command, false, gateway); err != nil {
 					return fmt.Errorf("command execution failed: %v", err)
 				}
-				logrus.Info("Command successfuly executed")
+				logrus.Info("Command successfully executed")
 			}
 		}
 	}

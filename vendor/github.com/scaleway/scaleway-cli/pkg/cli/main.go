@@ -15,9 +15,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	flag "github.com/docker/docker/pkg/mflag"
-	"github.com/hashicorp/go-version"
 
+	version "github.com/hashicorp/go-version"
 	"github.com/scaleway/scaleway-cli/pkg/api"
+	"github.com/scaleway/scaleway-cli/pkg/clilogger"
 	"github.com/scaleway/scaleway-cli/pkg/commands"
 	"github.com/scaleway/scaleway-cli/pkg/config"
 	"github.com/scaleway/scaleway-cli/pkg/scwversion"
@@ -31,6 +32,7 @@ var (
 	flVersion   = flag.Bool([]string{"v", "-version"}, false, "Print version information and quit")
 	flQuiet     = flag.Bool([]string{"q", "-quiet"}, false, "Enable quiet mode")
 	flSensitive = flag.Bool([]string{"-sensitive"}, false, "Show sensitive data in outputs, i.e. API Token/Organization")
+	flRegion    = flag.String([]string{"-region"}, "par1", "Change the default region (e.g. ams1)")
 )
 
 // Start is the entrypoint
@@ -63,6 +65,10 @@ func Start(rawArgs []string, streams *commands.Streams) (int, error) {
 		os.Setenv("DEBUG", "1")
 	}
 
+	if *flVerbose {
+		os.Setenv("SCW_VERBOSE_API", "1")
+	}
+
 	utils.Quiet(*flQuiet)
 	initLogging(os.Getenv("DEBUG") != "", *flVerbose, streams)
 
@@ -92,7 +98,7 @@ func Start(rawArgs []string, streams *commands.Streams) (int, error) {
 				// commands that don't need API
 			case "_userdata":
 				// commands that may need API
-				api, _ := getScalewayAPI()
+				api, _ := getScalewayAPI(*flRegion)
 				cmd.API = api
 			default:
 				// commands that do need API
@@ -103,11 +109,16 @@ func Start(rawArgs []string, streams *commands.Streams) (int, error) {
 						return 1, nil
 					}
 				}
-				api, errGet := getScalewayAPI()
+				api, errGet := getScalewayAPI(*flRegion)
 				if errGet != nil {
 					return 1, fmt.Errorf("unable to initialize scw api: %v", errGet)
 				}
 				cmd.API = api
+			}
+			// clean cache between versions
+			if cmd.API != nil && config.Version != scwversion.VERSION {
+				cmd.API.ClearCache()
+				config.Save()
 			}
 			err = cmd.Exec(cmd, cmd.Flag.Args())
 			switch err {
@@ -129,13 +140,13 @@ func Start(rawArgs []string, streams *commands.Streams) (int, error) {
 }
 
 // getScalewayAPI returns a ScalewayAPI using the user config file
-func getScalewayAPI() (*api.ScalewayAPI, error) {
+func getScalewayAPI(region string) (*api.ScalewayAPI, error) {
 	// We already get config globally, but whis way we can get explicit error when trying to create a ScalewayAPI object
 	config, err := config.GetConfig()
 	if err != nil {
 		return nil, err
 	}
-	return api.NewScalewayAPI(config.Organization, config.Token, scwversion.UserAgent())
+	return api.NewScalewayAPI(config.Organization, config.Token, scwversion.UserAgent(), region, clilogger.SetupLogger)
 }
 
 func initLogging(debug bool, verbose bool, streams *commands.Streams) {

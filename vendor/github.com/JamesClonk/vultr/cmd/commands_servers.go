@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"os"
 
 	vultr "github.com/JamesClonk/vultr/lib"
 	"github.com/jawher/mow.cli"
@@ -24,6 +25,8 @@ func serversCreate(cmd *cli.Cmd) {
 	userDataFile := cmd.StringOpt("user-data", "", "Path to file with user-data")
 	snapshot := cmd.StringOpt("snapshot", "", "SNAPSHOTID (see <snapshots>) to restore for the initial installation")
 	sshkey := cmd.StringOpt("k sshkey", "", "SSHKEYID (see <sshkeys>) of SSH key to apply to this server on install")
+	hostname := cmd.StringOpt("hostname", "", "Hostname to assign to this server")
+	tag := cmd.StringOpt("tag", "", "Tag to assign to this server")
 	ipv6 := cmd.BoolOpt("ipv6", false, "Assign an IPv6 subnet to this virtual machine (where available)")
 	privateNetworking := cmd.BoolOpt("private-networking", false, "Add private networking support for this virtual machine")
 	autoBackups := cmd.BoolOpt("autobackups", false, "Enable automatic backups for this virtual machine")
@@ -39,6 +42,8 @@ func serversCreate(cmd *cli.Cmd) {
 			IPV6:                 *ipv6,
 			PrivateNetworking:    *privateNetworking,
 			AutoBackups:          *autoBackups,
+			Hostname:             *hostname,
+			Tag:                  *tag,
 			DontNotifyOnActivate: !*notifyActivate,
 		}
 		if *userDataFile != "" {
@@ -126,6 +131,48 @@ func serversChangeOS(cmd *cli.Cmd) {
 	}
 }
 
+func serversAttachISO(cmd *cli.Cmd) {
+	cmd.Spec = "SUBID -i"
+	id := cmd.StringArg("SUBID", "", "SUBID of virtual machine (see <servers>)")
+	isoID := cmd.IntOpt("i iso", 0, "ISOID of ISO image")
+	cmd.Action = func() {
+		if err := GetClient().AttachISOtoServer(*id, *isoID); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Virtual machine ISO attached, server will reboot: %v\n", *isoID)
+	}
+}
+
+func serversDetachISO(cmd *cli.Cmd) {
+	id := cmd.StringArg("SUBID", "", "SUBID of virtual machine (see <servers>)")
+	cmd.Action = func() {
+		if err := GetClient().DetachISOfromServer(*id); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("Virtual machine ISO detached, server will reboot\n")
+	}
+}
+
+func serversStatusISO(cmd *cli.Cmd) {
+	id := cmd.StringArg("SUBID", "", "SUBID of virtual machine (see <servers>)")
+	cmd.Action = func() {
+		iso, err := GetClient().GetISOStatusofServer(*id)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if iso.State == "" {
+			fmt.Printf("Could not determine ISO state of virtual machine with SUBID %v!\n", *id)
+			return
+		}
+
+		lengths := []int{12, 8, 24}
+		tabsPrint(Columns{"SUBID", "ISOID", "STATE"}, lengths)
+		tabsPrint(Columns{*id, iso.ISOID, iso.State}, lengths)
+		tabsFlush()
+	}
+}
+
 func serversListOS(cmd *cli.Cmd) {
 	id := cmd.StringArg("SUBID", "", "SUBID of virtual machine (see <servers>)")
 	cmd.Action = func() {
@@ -149,12 +196,24 @@ func serversListOS(cmd *cli.Cmd) {
 }
 
 func serversDelete(cmd *cli.Cmd) {
+	cmd.Spec = "SUBID [-f]"
+
 	id := cmd.StringArg("SUBID", "", "SUBID of virtual machine (see <servers>)")
+	confirm := cmd.BoolOpt("f force", false, "Confirm deleting a server")
+	var input string
 	cmd.Action = func() {
+		if *confirm != true {
+			fmt.Print("Are you sure? (Type uppercase yes): ")
+			fmt.Scanln(&input)
+			if input != "YES" {
+				os.Exit(1)
+			}
+		}
 		if err := GetClient().DeleteServer(*id); err != nil {
 			log.Fatal(err)
 		}
 		fmt.Println("Virtual machine deleted")
+
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 	"golang.org/x/crypto/ssh/terminal"
 
 	"github.com/scaleway/scaleway-cli/pkg/api"
+	"github.com/scaleway/scaleway-cli/pkg/clilogger"
 	"github.com/scaleway/scaleway-cli/pkg/config"
 	"github.com/scaleway/scaleway-cli/pkg/scwversion"
 )
@@ -77,14 +78,14 @@ func selectKey(args *LoginArgs) error {
 		if err != nil {
 			return fmt.Errorf("Unable to open your key: %v", err)
 		}
-		args.SSHKey = string(buff[:len(buff)])
+		args.SSHKey = string(buff[:])
 		break
 	}
 	return nil
 }
 
 func getToken(connect api.ScalewayConnect) (string, error) {
-	FakeConnection, err := api.NewScalewayAPI("", "", scwversion.UserAgent())
+	FakeConnection, err := api.NewScalewayAPI("", "", scwversion.UserAgent(), "", clilogger.SetupLogger)
 	if err != nil {
 		return "", fmt.Errorf("Unable to create a fake ScalewayAPI: %s", err)
 	}
@@ -113,7 +114,7 @@ func getToken(connect api.ScalewayConnect) (string, error) {
 }
 
 func getOrganization(token string, email string) (string, error) {
-	FakeConnection, err := api.NewScalewayAPI("", token, scwversion.UserAgent())
+	FakeConnection, err := api.NewScalewayAPI("", token, scwversion.UserAgent(), "", clilogger.SetupLogger)
 	if err != nil {
 		return "", fmt.Errorf("Unable to create a fake ScalewayAPI: %s", err)
 	}
@@ -152,10 +153,10 @@ func connectAPI() (string, string, error) {
 	if err != nil {
 		return "", "", fmt.Errorf("unable to get your Hostname %v", err)
 	}
-	if err := promptUser("Login (cloud.scaleway.com): ", &email, true); err != nil {
+	if err = promptUser("Login (cloud.scaleway.com): ", &email, true); err != nil {
 		return "", "", err
 	}
-	if err := promptUser("Password: ", &password, false); err != nil {
+	if err = promptUser("Password: ", &password, false); err != nil {
 		return "", "", err
 	}
 
@@ -204,6 +205,14 @@ func uploadSSHKeys(apiConnection *api.ScalewayAPI, newKey string) {
 
 // RunLogin is the handler for 'scw login'
 func RunLogin(ctx CommandContext, args LoginArgs) error {
+	if config, cfgErr := config.GetConfig(); cfgErr == nil {
+		if TestConnection, err := api.NewScalewayAPI(config.Organization, config.Token, scwversion.UserAgent(), "", clilogger.SetupLogger); err == nil {
+			if user, err := TestConnection.GetUser(); err == nil {
+				fmt.Println("You are already logged as", user.Fullname)
+			}
+		}
+	}
+
 	if args.Organization == "" || args.Token == "" {
 		var err error
 
@@ -218,7 +227,7 @@ func RunLogin(ctx CommandContext, args LoginArgs) error {
 		Token:        strings.Trim(args.Token, "\n"),
 	}
 
-	apiConnection, err := api.NewScalewayAPI(cfg.Organization, cfg.Token, scwversion.UserAgent())
+	apiConnection, err := api.NewScalewayAPI(cfg.Organization, cfg.Token, scwversion.UserAgent(), "", clilogger.SetupLogger)
 	if err != nil {
 		return fmt.Errorf("Unable to create ScalewayAPI: %s", err)
 	}
@@ -227,7 +236,7 @@ func RunLogin(ctx CommandContext, args LoginArgs) error {
 		return fmt.Errorf("Unable to contact ScalewayAPI: %s", err)
 	}
 	if !args.SkipSSHKey {
-		if err := selectKey(&args); err != nil {
+		if err = selectKey(&args); err != nil {
 			logrus.Errorf("Unable to select a key: %v", err)
 		} else {
 			if args.SSHKey != "" {
@@ -235,6 +244,16 @@ func RunLogin(ctx CommandContext, args LoginArgs) error {
 			}
 		}
 	}
+	name := "."
+	user, err := apiConnection.GetUser()
+	if err == nil {
+		name = "as " + user.Fullname + "."
+	}
+	fmt.Println("")
+	fmt.Println("You are now authenticated on Scaleway.com", name)
+	fmt.Println("You can list your existing servers using `scw ps` or create a new one using `scw run ubuntu-xenial`.")
+	fmt.Println("You can get a list of all available commands using `scw -h` and get more usage examples on github.com/scaleway/scaleway-cli.")
+	fmt.Println("Happy cloud riding.")
 	return cfg.Save()
 }
 

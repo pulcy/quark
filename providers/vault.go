@@ -34,8 +34,9 @@ type VaultProvider interface {
 type vaultService struct {
 	VaultProviderConfig
 
-	log     *logging.Logger
-	service *service.VaultService
+	log        *logging.Logger
+	service    *service.VaultService
+	authClient *service.AuthenticatedVaultClient
 }
 
 func NewVaultProvider(log *logging.Logger, config VaultProviderConfig) (VaultProvider, error) {
@@ -60,10 +61,7 @@ func (vs *vaultService) AddMachine(clusterId, machineId string) error {
 	if err := vs.login(); err != nil {
 		return maskAny(err)
 	}
-	c, err := vs.service.Cluster()
-	if err != nil {
-		return maskAny(err)
-	}
+	c := vs.authClient.Cluster()
 	vs.log.Debugf("add machine '%s' to cluster '%s' in vault", machineId, clusterId)
 	if err := c.AddMachine(clusterId, machineId, ""); err != nil {
 		return maskAny(err)
@@ -76,10 +74,7 @@ func (vs *vaultService) RemoveMachine(machineId string) error {
 	if err := vs.login(); err != nil {
 		return maskAny(err)
 	}
-	c, err := vs.service.Cluster()
-	if err != nil {
-		return maskAny(err)
-	}
+	c := vs.authClient.Cluster()
 	vs.log.Debugf("remove machine '%s' from vault", machineId)
 	if err := c.RemoveMachine(machineId); err != nil {
 		return maskAny(err)
@@ -91,8 +86,10 @@ func (vs *vaultService) login() error {
 	loginData := service.GithubLoginData{
 		GithubToken: vs.GithubToken,
 	}
-	if err := vs.service.GithubLogin(loginData); err != nil {
+	authClient, err := vs.service.GithubLogin(loginData)
+	if err != nil {
 		return maskAny(err)
 	}
+	vs.authClient = authClient
 	return nil
 }

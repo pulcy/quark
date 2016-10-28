@@ -22,13 +22,15 @@ import (
 )
 
 func (vp *scalewayProvider) ShowRegions() error {
-	regions := []string{"paris"}
-
-	lines := []string{
-		"ID",
+	regions := map[string]string{
+		regionParis1:     "Paris 1",
+		regionAmsterdam1: "Amsterdam 1",
 	}
-	for _, r := range regions {
-		line := fmt.Sprintf("%s", r)
+	lines := []string{
+		"ID | Name",
+	}
+	for id, name := range regions {
+		line := fmt.Sprintf("%s | %s", id, name)
 		lines = append(lines, line)
 	}
 

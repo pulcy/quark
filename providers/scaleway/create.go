@@ -70,6 +70,9 @@ func (vp *scalewayProvider) CreateInstance(log *logging.Logger, options provider
 // createInstance creates a new instances, runs the bootstrap script and registers the instance
 // in DNS.
 func (vp *scalewayProvider) createInstance(log *logging.Logger, options providers.CreateInstanceOptions, dnsProvider providers.DnsProvider, existingInstances providers.ClusterInstanceList) (providers.ClusterInstance, error) {
+	if options.RegionID != vp.Region {
+		return providers.ClusterInstance{}, maskAny(fmt.Errorf("Cannot create server on region '%s' with provider configured for region '%s", options.RegionID, vp.Region))
+	}
 	// Create a new machine ID
 	machineID, err := util.GenUUID()
 	if err != nil {

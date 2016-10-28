@@ -40,7 +40,7 @@ func (vp *scalewayProvider) GetInstances(info providers.ClusterInfo) (providers.
 
 func (vp *scalewayProvider) getServers(info providers.ClusterInfo) ([]api.ScalewayServer, error) {
 	all := true
-	limit := 999
+	limit := 0
 	servers, err := vp.client.GetServers(all, limit)
 	if err != nil {
 		return nil, maskAny(err)
