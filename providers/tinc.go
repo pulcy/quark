@@ -140,6 +140,8 @@ func createTincConf(log *logging.Logger, i ClusterInstance, vpnName string, conn
 		fmt.Sprintf("Name = %s", tincName(i)),
 		"AddressFamily = ipv4",
 		"Interface = tun0",
+		"Cipher = aes-256-cbc",
+		"Digest = sha256",
 	}
 	for _, name := range connectTo {
 		lines = append(lines, fmt.Sprintf("ConnectTo = %s", name))
