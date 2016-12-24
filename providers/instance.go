@@ -44,15 +44,16 @@ const (
 
 // ClusterInstance describes a single instance
 type ClusterInstance struct {
-	ID               string   // Provider specific ID of the server (only used by provider, can be empty)
-	Name             string   // Name of the instance as known by the provider
-	ClusterIP        string   // IPv4 address of the instance used for all private communication in the cluster
-	LoadBalancerIPv4 string   // IPv4 address of the instance on which the load-balancer is listening (can be empty)
-	LoadBalancerIPv6 string   // IPv6 address of the instance on which the load-balancer is listening (can be empty)
-	IsGateway        bool     // If set, this instance can be used as a gateway by instances that have not direct IPv4 internet connection
-	LoadBalancerDNS  string   // Provider hosted public DNS name of the instance on which the load-balancer is listening (can be empty)
-	ClusterDevice    string   // Device name of the nic that is configured for the ClusterIP
-	PrivateIP        string   // IP address of the instance's private network (can be same as ClusterIP)
+	ID               string // Provider specific ID of the server (only used by provider, can be empty)
+	Name             string // Name of the instance as known by the provider
+	ClusterIP        string // IPv4 address of the instance used for all private communication in the cluster
+	LoadBalancerIPv4 string // IPv4 address of the instance on which the load-balancer is listening (can be empty)
+	LoadBalancerIPv6 string // IPv6 address of the instance on which the load-balancer is listening (can be empty)
+	IsGateway        bool   // If set, this instance can be used as a gateway by instances that have not direct IPv4 internet connection
+	LoadBalancerDNS  string // Provider hosted public DNS name of the instance on which the load-balancer is listening (can be empty)
+	ClusterDevice    string // Device name of the nic that is configured for the ClusterIP
+	PrivateIP        string // IP address of the instance's private network (can be same as ClusterIP)
+	PrivateNetwork   net.IPNet
 	PrivateDNS       string   // Provider hosted private DNS name of the instance's private network
 	UserName         string   // Account name used to SSH into this instance. (empty defaults to 'core')
 	OS               OSName   // Name of the OS on the instance

@@ -16,6 +16,7 @@ package scaleway
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/scaleway/scaleway-cli/pkg/api"
@@ -65,11 +66,13 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 	if s.IPV6 != nil {
 		ipv6 = s.IPV6.Address
 	}
+	privateIPMask := net.IPv4Mask(255, 255, 0, 0)
 	info := providers.ClusterInstance{
 		ID:               s.Identifier,
 		Name:             s.Name,
 		ClusterIP:        s.Tags[clusterIPTagIndex],
 		PrivateIP:        s.PrivateIP,
+		PrivateNetwork:   net.IPNet{IP: net.ParseIP(s.PrivateIP).Mask(privateIPMask), Mask: privateIPMask},
 		PrivateDNS:       fmt.Sprintf("%s.priv.cloud.scaleway.com", s.Identifier),
 		IsGateway:        publicIPv4 != "",
 		LoadBalancerIPv4: publicIPv4,

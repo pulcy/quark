@@ -16,10 +16,10 @@ package providers
 
 import (
 	"fmt"
-	"net"
 	"path"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/op/go-logging"
 )
@@ -75,6 +75,12 @@ func (instances ClusterInstanceList) ReconfigureTincCluster(log *logging.Logger,
 			if err := reloadTinc(log, i); err != nil {
 				return maskAny(err)
 			}
+		} else {
+			log.Infof("Starting tinc on %s", i)
+			if _, err := i.runRemoteCommand(log, "sudo systemctl restart tinc.service", "", false); err != nil {
+				return maskAny(err)
+			}
+			time.Sleep(time.Second * 5)
 		}
 	}
 
@@ -137,10 +143,9 @@ func distributeTincHosts(log *logging.Logger, i ClusterInstance, vpnName string,
 		return maskAny(err)
 	}
 	tincName := tincName(i)
-	tincNameIsGateway := i.IsGateway
 	for _, x := range instances {
 		if x.Name != i.Name {
-			err := setTincHostsConf(log, x, vpnName, tincName, conf, tincNameIsGateway)
+			err := setTincHostsConf(log, x, vpnName, tincName, conf)
 			if err != nil {
 				return maskAny(err)
 			}
@@ -199,7 +204,12 @@ func createTincScripts(log *logging.Logger, i ClusterInstance, vpnName string) e
 	upLines := []string{
 		"#!/bin/sh",
 		fmt.Sprintf("ifconfig $INTERFACE %s netmask 255.255.255.0", i.ClusterIP),
+		"ORIGINAL_GATEWAY=$(ip route show | grep ^default | cut -d ' ' -f 2-5)",
+		fmt.Sprintf("ip route replace %s $ORIGINAL_GATEWAY", i.PrivateNetwork.String()),
+		"ip route replace 0.0.0.0/1 dev $INTERFACE",
+		"ip route replace 128.0.0.0/1 dev $INTERFACE",
 	}
+
 	downLines := []string{
 		"#!/bin/sh",
 		"ifconfig $INTERFACE down",
@@ -234,7 +244,7 @@ func getTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName string) (s
 }
 
 // setTincHostsConf creates a /etc/tinc/<vpnName>/hosts/<hostName> from the given content
-func setTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName, tincName, content string, tincNameIsGateway bool) error {
+func setTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName, tincName, content string) error {
 	confDir := path.Join("/etc/tinc", vpnName, "hosts")
 	confPath := path.Join(confDir, tincName)
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo mkdir -p %s", confDir), "", false); err != nil {
@@ -242,32 +252,6 @@ func setTincHostsConf(log *logging.Logger, i ClusterInstance, vpnName, tincName,
 	}
 	if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", confPath), content, false); err != nil {
 		return maskAny(err)
-	}
-	upPath := path.Join(confDir, tincName+"-up")
-	if i.IsGateway || !tincNameIsGateway {
-		// Remove any <host>-up script.
-		if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo rm -f %s", upPath), "", false); err != nil {
-			return maskAny(err)
-		}
-	} else {
-		// Create <host>-up script.
-		ip := net.ParseIP(i.PrivateIP)
-		network := net.IPNet{IP: ip, Mask: ip.DefaultMask()}
-		hostUp := []string{
-			"#!/bin/sh",
-			"ORIGINAL_GATEWAY=$(ip route show | grep ^default | cut -d ' ' -f 2-5)",
-			"ORIGINAL_GATEWAY_TUN=$(ip route show | grep ^default | grep $INTERFACE)",
-			"if [ -z \"$ORIGINAL_GATEWAY_TUN\" ]; then",
-			fmt.Sprintf("ip route add %s $ORIGINAL_GATEWAY", network.String()),
-			"fi",
-			"ip route replace default dev $INTERFACE",
-		}
-		if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo tee %s", upPath), strings.Join(hostUp, "\n"), false); err != nil {
-			return maskAny(err)
-		}
-		if _, err := i.runRemoteCommand(log, fmt.Sprintf("sudo chmod 755 %s", upPath), "", false); err != nil {
-			return maskAny(err)
-		}
 	}
 	return nil
 }
