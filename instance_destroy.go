@@ -81,7 +81,7 @@ func destroyInstance(cmd *cobra.Command, args []string) {
 	if !isEtcdProxy {
 		remainingInstances := instances.Except(toRemove)
 		if err := remainingInstances.RemoveEtcdMember(log, toRemove.Name, toRemove.ClusterIP); err != nil {
-			Exitf("Failed to remove instance '%s' from ETCD\n", destroyInstanceFlags.String())
+			log.Errorf("Failed to remove instance '%s' from ETCD", destroyInstanceFlags.String())
 		}
 	}
 

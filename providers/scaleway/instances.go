@@ -71,6 +71,7 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 		ClusterIP:        s.Tags[clusterIPTagIndex],
 		PrivateIP:        s.PrivateIP,
 		PrivateDNS:       fmt.Sprintf("%s.priv.cloud.scaleway.com", s.Identifier),
+		IsGateway:        publicIPv4 != "",
 		LoadBalancerIPv4: publicIPv4,
 		LoadBalancerIPv6: ipv6,
 		LoadBalancerDNS:  fmt.Sprintf("%s.pub.cloud.scaleway.com", s.Identifier),
@@ -84,6 +85,7 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 		info.Extra = append(info.Extra, "nopubip")
 	} else if *s.PublicAddress.Dynamic {
 		info.Extra = append(info.Extra, "dynpubip")
+		info.IsGateway = false
 	}
 	if s.DynamicIPRequired != nil && *s.DynamicIPRequired {
 		info.Extra = append(info.Extra, "dynipreq")

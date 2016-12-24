@@ -23,16 +23,16 @@ echo $TINCIP >/etc/pulcy/tinc-ip
 
 {{ if .HttpProxy }}
 # Setup HTTP Proxy
-export "http_proxy={{ .HttpProxy }}"
-export "https_proxy={{ .HttpProxy }}"
-echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
-echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
-touch /etc/pulcy/docker.env
-echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
-echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
-touch /etc/apt/apt.conf.d/98proxy
-echo "Acquire::http::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
-echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
+#export "http_proxy={{ .HttpProxy }}"
+#export "https_proxy={{ .HttpProxy }}"
+#echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
+#echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
+#touch /etc/pulcy/docker.env
+#echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+#echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
+#touch /etc/apt/apt.conf.d/98proxy
+#echo "Acquire::http::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
+#echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
 {{ end }}
 
 # Create machine-id
@@ -58,10 +58,11 @@ HOST=$(hostname)
 echo "127.0.0.1 ${HOST}" >> /etc/hosts
 
 # Install packages
+export DEBIAN_FRONTEND=noninteractive
 apt-get -q update
 apt-get --force-yes -y -qq -o Dpkg::Options::="--force-confdef" upgrade < /dev/null
 apt-get --force-yes -y -qq upgrade -o Dpkg::Options::="--force-confdef" docker-engine < /dev/null
-apt-get --force-yes install -y -q -o Dpkg::Options::="--force-confdef" tar tinc systemd-journal-remote < /dev/null
+apt-get --force-yes install -y -q -o Dpkg::Options::="--force-confdef" inetutils-traceroute tar tinc systemd-journal-remote < /dev/null
 apt-get clean
 
 # Install Fleet

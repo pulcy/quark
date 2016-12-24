@@ -178,7 +178,8 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 
 	name := options.InstanceName
 	image := &imageID
-	dynamicIPRequired := !vp.NoIPv4
+	//dynamicIPRequired := !vp.NoIPv4
+	dynamicIPRequired := true // We alway need an IP address to start with
 	//bootscript := ""
 
 	volID := ""
@@ -214,6 +215,7 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 		Tags: []string{
 			options.ClusterInfo.ID,
 			options.TincIpv4,
+			options.Roles(),
 		},
 		Organization:   vp.Organization,
 		CommercialType: options.TypeID,
@@ -223,7 +225,8 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 	if volID != "" {
 		opts.Volumes["0"] = volID
 	}
-	vp.Logger.Debugf("Creating server %s: %#v\n", name, opts)
+	vp.Logger.Infof("Creating server %s", name)
+	vp.Logger.Debugf("server settings for %s: %#v\n", name, opts)
 	id, err := vp.client.PostServer(opts)
 	if err != nil {
 		vp.Logger.Errorf("PostServer failed: %#v", err)
@@ -285,9 +288,21 @@ func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, 
 		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
 	}
 
-	vp.Logger.Infof("Done running bootstrap on %s, rebooting...", instance.Name)
+	// Update IP address
+	if vp.NoIPv4 {
+		// Disconnect dynamic IP address
+		vp.Logger.Infof("Disconnecting public IP on %s...", instance.Name)
+		dynamicIPRequired := false
+		if err := vp.client.PatchServer(instance.ID, api.ScalewayServerPatchDefinition{
+			DynamicIPRequired: &dynamicIPRequired,
+		}); err != nil {
+			vp.Logger.Errorf("IP address disconnect failed: %#v", err)
+		}
+	}
+
+	vp.Logger.Infof("Done running bootstrap on %s, restarting...", instance.Name)
 	if err := vp.client.PostServerAction(instance.ID, "reboot"); err != nil {
-		vp.Logger.Errorf("reboot failed: %#v", err)
+		vp.Logger.Errorf("poweroff failed: %#v", err)
 		return maskAny(err)
 	}
 	time.Sleep(time.Second * 5)

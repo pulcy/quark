@@ -46,9 +46,10 @@ const (
 type ClusterInstance struct {
 	ID               string   // Provider specific ID of the server (only used by provider, can be empty)
 	Name             string   // Name of the instance as known by the provider
-	ClusterIP        string   // IP address of the instance used for all private communication in the cluster
+	ClusterIP        string   // IPv4 address of the instance used for all private communication in the cluster
 	LoadBalancerIPv4 string   // IPv4 address of the instance on which the load-balancer is listening (can be empty)
 	LoadBalancerIPv6 string   // IPv6 address of the instance on which the load-balancer is listening (can be empty)
+	IsGateway        bool     // If set, this instance can be used as a gateway by instances that have not direct IPv4 internet connection
 	LoadBalancerDNS  string   // Provider hosted public DNS name of the instance on which the load-balancer is listening (can be empty)
 	ClusterDevice    string   // Device name of the nic that is configured for the ClusterIP
 	PrivateIP        string   // IP address of the instance's private network (can be same as ClusterIP)
@@ -192,14 +193,14 @@ func (i ClusterInstance) GetVaultAddr(log *logging.Logger) (string, error) {
 
 func (i ClusterInstance) GetWeaveEnv(log *logging.Logger) (string, error) {
 	log.Debugf("Fetching weave.env on %s", i)
-	id, err := i.runRemoteCommand(log, "cat /etc/pulcy/weave.env", "", false)
+	id, err := i.runRemoteCommand(log, "sudo cat /etc/pulcy/weave.env", "", false)
 	return id, maskAny(err)
 }
 
 func (i ClusterInstance) GetWeaveSeed(log *logging.Logger) (string, error) {
 	log.Debugf("Fetching weave-seed on %s", i)
 	// weave-seed does not have to exists, so ignore errors by the `|| echo ""` parts.
-	id, err := i.runRemoteCommand(log, "sh -c 'cat /etc/pulcy/weave-seed || echo \"\"'", "", false)
+	id, err := i.runRemoteCommand(log, "sh -c 'sudo cat /etc/pulcy/weave-seed || echo \"\"'", "", false)
 	return id, maskAny(err)
 }
 

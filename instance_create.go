@@ -69,7 +69,8 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Validate
 	validateVault := false
-	if err := createInstanceFlags.Validate(validateVault); err != nil {
+	validateWeave := false
+	if err := createInstanceFlags.Validate(validateVault, validateWeave); err != nil {
 		Exitf("Create failed: %s\n", err.Error())
 	}
 
@@ -133,7 +134,8 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Now validate everything
 	validateVault = true
-	if err := createInstanceFlags.Validate(validateVault); err != nil {
+	validateWeave = true
+	if err := createInstanceFlags.Validate(validateVault, validateWeave); err != nil {
 		Exitf("Create failed: %s\n", err.Error())
 	}
 
