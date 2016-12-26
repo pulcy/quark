@@ -16,6 +16,7 @@ package main
 
 import (
 	"github.com/spf13/cobra"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/pulcy/quark/providers"
 )
@@ -69,7 +70,8 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Validate
 	validateVault := false
-	if err := createInstanceFlags.Validate(validateVault); err != nil {
+	validateWeave := false
+	if err := createInstanceFlags.Validate(validateVault, validateWeave); err != nil {
 		Exitf("Create failed: %s\n", err.Error())
 	}
 
@@ -82,40 +84,63 @@ func createInstance(cmd *cobra.Command, args []string) {
 		Exitf("Cluster %s.%s does not exist.\n", createInstanceFlags.Name, createInstanceFlags.Domain)
 	}
 
+	// Fetch various variables from existing cluster
+	g := errgroup.Group{}
+
 	// Fetch cluster ID
-	clusterID, err := instances.GetClusterID(log)
-	if err != nil {
-		Exitf("Failed to get cluster-id: %v\n", err)
-	}
-	createInstanceFlags.ID = clusterID
+	g.Go(func() error {
+		clusterID, err := instances.GetClusterID(log)
+		if err != nil {
+			Exitf("Failed to get cluster-id: %v\n", err)
+		}
+		createInstanceFlags.ClusterInfo.ID = clusterID
+		return nil
+	})
 
 	// Fetch vault address
-	vaultAddr, err := instances.GetVaultAddr(log)
-	if err != nil {
-		Exitf("Failed to get vault-addr: %v\n", err)
-	}
-	createInstanceFlags.VaultAddress = vaultAddr
+	g.Go(func() error {
+		vaultAddr, err := instances.GetVaultAddr(log)
+		if err != nil {
+			Exitf("Failed to get vault-addr: %v\n", err)
+		}
+		createInstanceFlags.VaultAddress = vaultAddr
+		return nil
+	})
 
 	// Fetch vault CA certificate
-	vaultCACert, err := instances.GetVaultCrt(log)
-	if err != nil {
-		Exitf("Failed to get vault-cacert: %v\n", err)
-	}
-	createInstanceFlags.SetVaultCertificate(vaultCACert)
+	g.Go(func() error {
+		vaultCACert, err := instances.GetVaultCrt(log)
+		if err != nil {
+			Exitf("Failed to get vault-cacert: %v\n", err)
+		}
+		createInstanceFlags.SetVaultCertificate(vaultCACert)
+		return nil
+	})
 
 	// Fetch weave.env
-	weaveEnv, err := instances.GetWeaveEnv(log)
-	if err != nil {
-		Exitf("Failed to get weave.env: %v\n", err)
-	}
-	createInstanceFlags.WeaveEnv = weaveEnv
+	g.Go(func() error {
+		weaveEnv, err := instances.GetWeaveEnv(log)
+		if err != nil {
+			Exitf("Failed to get weave.env: %v\n", err)
+		}
+		createInstanceFlags.WeaveEnv = weaveEnv
+		return nil
+	})
 
 	// Fetch weave-seed
-	weaveSeed, err := instances.GetWeaveSeed(log)
-	if err != nil {
-		Exitf("Failed to get weave-seed: %v\n", err)
+	g.Go(func() error {
+		weaveSeed, err := instances.GetWeaveSeed(log)
+		if err != nil {
+			Exitf("Failed to get weave-seed: %v\n", err)
+		}
+		createInstanceFlags.WeaveSeed = weaveSeed
+		return nil
+	})
+
+	// Wait for all fetch operations to complete
+	if err := g.Wait(); err != nil {
+		Exitf("Failed to get data from existing cluster: %v\n", err)
 	}
-	createInstanceFlags.WeaveSeed = weaveSeed
 
 	// Setup instance index
 	if createInstanceFlags.InstanceIndex == 0 {
@@ -133,7 +158,8 @@ func createInstance(cmd *cobra.Command, args []string) {
 
 	// Now validate everything
 	validateVault = true
-	if err := createInstanceFlags.Validate(validateVault); err != nil {
+	validateWeave = true
+	if err := createInstanceFlags.Validate(validateVault, validateWeave); err != nil {
 		Exitf("Create failed: %s\n", err.Error())
 	}
 
@@ -158,7 +184,7 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Add new instance to vault cluster
-	if err := newVaultProvider().AddMachine(clusterID, machineID); err != nil {
+	if err := newVaultProvider().AddMachine(createInstanceFlags.ClusterInfo.ID, machineID); err != nil {
 		log.Warningf("Failed to add machine to vault: %#v", err)
 	}
 

@@ -109,8 +109,23 @@ func (o *CreateInstanceOptions) CreateFleetMetadata(instanceIndex int) string {
 	return strings.Join(list, ",")
 }
 
+// Roles returns the roles that the instance is supposed to play.
+func (o *CreateInstanceOptions) Roles() string {
+	var list []string
+	if o.RoleCore {
+		list = append(list, "core")
+	}
+	if o.RoleLoadBalancer {
+		list = append(list, "lb")
+	}
+	if o.RoleWorker {
+		list = append(list, "worker")
+	}
+	return strings.Join(list, ",")
+}
+
 // Validate the given options
-func (cio CreateInstanceOptions) Validate(validateVault bool) error {
+func (cio CreateInstanceOptions) Validate(validateVault, validateWeave bool) error {
 	if cio.ClusterName == "" {
 		return errors.New("Please specify a cluster-name")
 	}
@@ -139,9 +154,11 @@ func (cio CreateInstanceOptions) Validate(validateVault bool) error {
 			return errors.New("Please specify a vault-cacert")
 		}
 	}
-	if cio.WeaveEnv == "" {
-		return errors.New("Please specify a weave.env")
+	if validateWeave {
+		if cio.WeaveEnv == "" {
+			return errors.New("Please specify a weave.env")
+		}
+		// Note WeaveSeed is allowed to be empty
 	}
-	// Note WeaveSeed is allowed to be empty
 	return nil
 }

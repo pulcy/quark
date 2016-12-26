@@ -16,6 +16,7 @@ package scaleway
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/scaleway/scaleway-cli/pkg/api"
@@ -65,12 +66,15 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 	if s.IPV6 != nil {
 		ipv6 = s.IPV6.Address
 	}
+	privateIPMask := net.IPv4Mask(255, 255, 0, 0)
 	info := providers.ClusterInstance{
 		ID:               s.Identifier,
 		Name:             s.Name,
 		ClusterIP:        s.Tags[clusterIPTagIndex],
 		PrivateIP:        s.PrivateIP,
+		PrivateNetwork:   net.IPNet{IP: net.ParseIP(s.PrivateIP).Mask(privateIPMask), Mask: privateIPMask},
 		PrivateDNS:       fmt.Sprintf("%s.priv.cloud.scaleway.com", s.Identifier),
+		IsGateway:        publicIPv4 != "",
 		LoadBalancerIPv4: publicIPv4,
 		LoadBalancerIPv6: ipv6,
 		LoadBalancerDNS:  fmt.Sprintf("%s.pub.cloud.scaleway.com", s.Identifier),
@@ -84,9 +88,21 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 		info.Extra = append(info.Extra, "nopubip")
 	} else if *s.PublicAddress.Dynamic {
 		info.Extra = append(info.Extra, "dynpubip")
+		info.IsGateway = false
 	}
 	if s.DynamicIPRequired != nil && *s.DynamicIPRequired {
 		info.Extra = append(info.Extra, "dynipreq")
+	}
+	tags := s.Tags
+	if len(tags) > clusterRolesTagIndex {
+		roles := strings.Split(tags[clusterRolesTagIndex], ",")
+		etcdProxy := true
+		for _, r := range roles {
+			if r == "core" {
+				etcdProxy = false
+			}
+		}
+		info.EtcdProxy = &etcdProxy
 	}
 	return info
 }
