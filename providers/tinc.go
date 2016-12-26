@@ -204,10 +204,14 @@ func createTincScripts(log *logging.Logger, i ClusterInstance, vpnName string) e
 	upLines := []string{
 		"#!/bin/sh",
 		fmt.Sprintf("ifconfig $INTERFACE %s netmask 255.255.255.0", i.ClusterIP),
-		"ORIGINAL_GATEWAY=$(ip route show | grep ^default | cut -d ' ' -f 2-5)",
-		fmt.Sprintf("ip route replace %s $ORIGINAL_GATEWAY", i.PrivateNetwork.String()),
-		"ip route replace 0.0.0.0/1 dev $INTERFACE",
-		"ip route replace 128.0.0.0/1 dev $INTERFACE",
+	}
+	if !i.IsGateway {
+		upLines = append(upLines,
+			"ORIGINAL_GATEWAY=$(ip route show | grep ^default | cut -d ' ' -f 2-5)",
+			fmt.Sprintf("ip route replace %s $ORIGINAL_GATEWAY", i.PrivateNetwork.String()),
+			"ip route replace 0.0.0.0/1 dev $INTERFACE",
+			"ip route replace 128.0.0.0/1 dev $INTERFACE",
+		)
 	}
 
 	downLines := []string{

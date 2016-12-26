@@ -24,6 +24,7 @@ type InstanceConfig struct {
 	RegionID     string // ID of the region to run all instances in
 	TypeID       string // ID of the type of each instance
 	MinOSVersion string
+	NoPublicIPv4 bool // If set, this instance will be created without a public IPv4 address
 }
 
 func (ic InstanceConfig) String() string {

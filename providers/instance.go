@@ -24,6 +24,8 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/coreos/go-semver/semver"
 	"github.com/juju/errgo"
 	"github.com/op/go-logging"
@@ -58,6 +60,7 @@ type ClusterInstance struct {
 	UserName         string   // Account name used to SSH into this instance. (empty defaults to 'core')
 	OS               OSName   // Name of the OS on the instance
 	Extra            []string // Extra informational data
+	EtcdProxy        *bool
 }
 
 // Equals returns true of the given cluster instances refer to the same instance.
@@ -225,10 +228,23 @@ func (i ClusterInstance) GetOSRelease(log *logging.Logger) (semver.Version, erro
 	return semver.Version{}, maskAny(errgo.Newf("%s not found in /etc/lsb-release", prefix))
 }
 
-func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
+// isEtcdProxyFromService queries the ETCD2 service on the instance to look for an ETCD_PROXY variable.
+func (i ClusterInstance) isEtcdProxyFromService(log *logging.Logger) (bool, error) {
 	log.Debugf("Fetching etcd proxy status on %s", i)
 	cat, err := i.runRemoteCommand(log, "sudo systemctl cat etcd2.service", "", false)
 	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
+}
+
+// IsEtcdProxy returns true if the instance in an ETCD proxy.
+func (i ClusterInstance) IsEtcdProxy(log *logging.Logger) (bool, error) {
+	if i.EtcdProxy != nil {
+		return *i.EtcdProxy, nil
+	}
+	result, err := i.isEtcdProxyFromService(log)
+	if err != nil {
+		return false, maskAny(err)
+	}
+	return result, nil
 }
 
 // AddEtcdMember calls etcdctl to add a member to ETCD
@@ -267,25 +283,39 @@ func (i ClusterInstance) RemoveEtcdMember(log *logging.Logger, name, clusterIP s
 }
 
 func (i ClusterInstance) AsClusterMember(log *logging.Logger) (ClusterMember, error) {
-	clusterID, err := i.GetClusterID(log)
-	if err != nil {
-		return ClusterMember{}, maskAny(err)
-	}
-	machineID, err := i.GetMachineID(log)
-	if err != nil {
-		return ClusterMember{}, maskAny(err)
-	}
-	etcdProxy, err := i.IsEtcdProxy(log)
-	if err != nil {
-		return ClusterMember{}, maskAny(err)
-	}
-	return ClusterMember{
-		ClusterID:     clusterID,
-		MachineID:     machineID,
+	g := errgroup.Group{}
+	result := ClusterMember{
 		ClusterIP:     i.ClusterIP,
 		PrivateHostIP: i.PrivateIP,
-		EtcdProxy:     etcdProxy,
-	}, nil
+	}
+	g.Go(func() error {
+		clusterID, err := i.GetClusterID(log)
+		if err != nil {
+			return maskAny(err)
+		}
+		result.ClusterID = clusterID
+		return nil
+	})
+	g.Go(func() error {
+		machineID, err := i.GetMachineID(log)
+		if err != nil {
+			return maskAny(err)
+		}
+		result.MachineID = machineID
+		return nil
+	})
+	g.Go(func() error {
+		etcdProxy, err := i.IsEtcdProxy(log)
+		if err != nil {
+			return maskAny(err)
+		}
+		result.EtcdProxy = etcdProxy
+		return nil
+	})
+	if err := g.Wait(); err != nil {
+		return ClusterMember{}, maskAny(err)
+	}
+	return result, nil
 }
 
 type InitialSetupOptions struct {

@@ -67,6 +67,7 @@ update-vendor:
 		github.com/spf13/pflag \
 		github.com/spf13/cobra \
 		golang.org/x/crypto/ssh \
+		golang.org/x/sync/errgroup \
 		golang.org/x/oauth2
 
 $(BIN): $(GOBUILDDIR) $(SOURCES) templates/templates_bindata.go

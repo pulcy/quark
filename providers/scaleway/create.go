@@ -36,8 +36,9 @@ const (
 	volumeType          = "l_ssd"
 	volumeSize          = uint64(50 * 1000 * 1000 * 1000)
 
-	clusterIDTagIndex = 0 // Index in ScalewayServer.Tags of the cluster-ID
-	clusterIPTagIndex = 1 // Index in ScalewayServer.Tags of the cluster IP address (tinc address)
+	clusterIDTagIndex    = 0 // Index in ScalewayServer.Tags of the cluster-ID
+	clusterIPTagIndex    = 1 // Index in ScalewayServer.Tags of the cluster IP address (tinc address)
+	clusterRolesTagIndex = 2 // Index in ScalewayServer.Tags of the roles list
 )
 
 // CreateInstance creates one new machine instance.
@@ -178,9 +179,7 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 
 	name := options.InstanceName
 	image := &imageID
-	//dynamicIPRequired := !vp.NoIPv4
 	dynamicIPRequired := true // We alway need an IP address to start with
-	//bootscript := ""
 
 	volID := ""
 	/*if options.TypeID != commercialTypeVC1 {
@@ -213,6 +212,7 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 		DynamicIPRequired: &dynamicIPRequired,
 		//Bootscript:        &bootscript,
 		Tags: []string{
+			// Note that this tags must match the order of the clusterIDxxx constants
 			options.ClusterInfo.ID,
 			options.TincIpv4,
 			options.Roles(),
@@ -289,7 +289,7 @@ func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, 
 	}
 
 	// Update IP address
-	if vp.NoIPv4 {
+	if options.NoPublicIPv4 {
 		// Disconnect dynamic IP address
 		vp.Logger.Infof("Disconnecting public IP on %s...", instance.Name)
 		dynamicIPRequired := false
@@ -298,6 +298,20 @@ func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, 
 		}); err != nil {
 			vp.Logger.Errorf("IP address disconnect failed: %#v", err)
 		}
+	}
+
+	// Update tags: remove cluster ID
+	vp.Logger.Infof("Updating server tags on %s...", instance.Name)
+	s, err := vp.client.GetServer(instance.ID)
+	if err != nil {
+		return maskAny(err)
+	}
+	tags := s.Tags
+	tags[clusterIDTagIndex] = "-" // Hide cluster-ID
+	if err := vp.client.PatchServer(instance.ID, api.ScalewayServerPatchDefinition{
+		Tags: &tags,
+	}); err != nil {
+		vp.Logger.Errorf("IP address disconnect failed: %#v", err)
 	}
 
 	vp.Logger.Infof("Done running bootstrap on %s, restarting...", instance.Name)
@@ -371,6 +385,9 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 			if err != nil {
 				errors <- maskAny(err)
 				return
+			}
+			if !isLB {
+				instanceOptions.NoPublicIPv4 = true
 			}
 			instance, err := vp.createInstance(log, instanceOptions, dnsProvider, nil)
 			if err != nil {

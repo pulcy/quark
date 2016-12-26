@@ -85,5 +85,8 @@ func (vp *scalewayProvider) instanceConfigDefaults(ic providers.InstanceConfig) 
 	if ic.TypeID == "" {
 		ic.TypeID = commercialTypeVC1
 	}
+	if vp.NoIPv4 {
+		ic.NoPublicIPv4 = true
+	}
 	return ic
 }

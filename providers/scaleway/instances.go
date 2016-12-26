@@ -93,5 +93,16 @@ func (dp *scalewayProvider) clusterInstance(s api.ScalewayServer, bootstrapNeede
 	if s.DynamicIPRequired != nil && *s.DynamicIPRequired {
 		info.Extra = append(info.Extra, "dynipreq")
 	}
+	tags := s.Tags
+	if len(tags) > clusterRolesTagIndex {
+		roles := strings.Split(tags[clusterRolesTagIndex], ",")
+		etcdProxy := true
+		for _, r := range roles {
+			if r == "core" {
+				etcdProxy = false
+			}
+		}
+		info.EtcdProxy = &etcdProxy
+	}
 	return info
 }
