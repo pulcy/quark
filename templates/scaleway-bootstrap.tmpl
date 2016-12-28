@@ -10,6 +10,7 @@ METADATA=`curl http://169.254.42.42/conf`
 MODEL=$(echo "$METADATA" | egrep COMMERCIAL_TYPE= | sed 's/COMMERCIAL_TYPE=//g')
 CLUSTERID=$(echo "$METADATA" | egrep TAGS_0= | sed 's/TAGS_0=//g')
 TINCIP=$(echo "$METADATA" | egrep TAGS_1= | sed 's/TAGS_1=//g')
+ROLES=$(echo "$METADATA" | egrep TAGS_2= | sed 's/TAGS_2=//g')
 IPV6_ADDRESS=$(echo "$METADATA" | egrep IPV6_ADDRESS= | sed 's/IPV6_ADDRESS=//g')
 echo "HOST_PRIVATE_IPV4="$SCWIP >>/etc/environment
 echo "HOST_IPV6="$IPV6_ADDRESS >>/etc/environment
@@ -20,20 +21,7 @@ mkdir -p /etc/pulcy
 echo $CLUSTERID >/etc/pulcy/cluster-id
 chmod 0400 /etc/pulcy/cluster-id
 echo $TINCIP >/etc/pulcy/tinc-ip
-
-{{ if .HttpProxy }}
-# Setup HTTP Proxy
-#export "http_proxy={{ .HttpProxy }}"
-#export "https_proxy={{ .HttpProxy }}"
-#echo "http_proxy={{ .HttpProxy }}" >>/etc/environment
-#echo "https_proxy={{ .HttpProxy }}" >>/etc/environment
-#touch /etc/pulcy/docker.env
-#echo "http_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
-#echo "https_proxy={{ .HttpProxy }}" >>/etc/pulcy/docker.env
-#touch /etc/apt/apt.conf.d/98proxy
-#echo "Acquire::http::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
-#echo "Acquire::https::Proxy \"{{ .HttpProxy }}\";" >> /etc/apt/apt.conf.d/98proxy
-{{ end }}
+echo $ROLES >/etc/pulcy/roles
 
 # Create machine-id
 rm -f /etc/.regen-machine-id
@@ -64,73 +52,6 @@ apt-get --force-yes -y -qq -o Dpkg::Options::="--force-confdef" upgrade < /dev/n
 apt-get --force-yes -y -qq upgrade -o Dpkg::Options::="--force-confdef" docker-engine < /dev/null
 apt-get --force-yes install -y -q -o Dpkg::Options::="--force-confdef" inetutils-traceroute tar tinc systemd-journal-remote < /dev/null
 apt-get clean
-
-# Install Fleet
-FLEETVERSION={{.FleetVersion}}
-FLEETFILE=fleet-${FLEETVERSION}-linux-amd64
-cd /root \
-    && tar xzf /tmp/fleet.tar.gz \
-    && mv -f ${FLEETFILE}/* /usr/bin/ \
-    && rm -Rf ${FLEETFILE} /tmp/fleet.tar.gz
-cat > /etc/systemd/system/fleet.service <<\EOFLEET
-[Unit]
-Description=fleet daemon
-
-After=etcd.service
-After=etcd2.service
-
-Wants=fleet.socket
-After=fleet.socket
-
-[Service]
-Environment=GOMAXPROCS=1
-ExecStart=/usr/bin/fleetd
-Restart=always
-RestartSec=10s
-
-[Install]
-WantedBy=multi-user.target
-EOFLEET
-
-cat > /etc/systemd/system/fleet.socket <<\EOFLEETSOCKET
-[Unit]
-Description=Fleet API Socket
-PartOf=fleet.service
-
-[Socket]
-ListenStream=/var/run/fleet.sock
-EOFLEETSOCKET
-
-# Install Etcd
-ETCDVERSION={{.EtcdVersion}}
-ETCDFILE=etcd-${ETCDVERSION}-linux-amd64
-cd /usr/src/ \
-    && tar xzf /tmp/etcd.tar.gz \
-    && mv -f ${ETCDFILE}/etcd /usr/bin/etcd2 \
-    && mv -f ${ETCDFILE}/* /usr/bin/ \
-    && rm -Rf ${ETCDFILE} /tmp/etcd.tar.gz
-useradd --system --no-create-home etcd
-mkdir /var/lib/etcd2
-chown etcd.etcd /var/lib/etcd2
-cat > /etc/systemd/system/etcd2.service <<\EOETCD
-[Unit]
-Description=etcd2
-Conflicts=etcd.service
-
-[Service]
-User=etcd
-Type=notify
-Environment=ETCD_DATA_DIR=/var/lib/etcd2
-Environment=ETCD_NAME=%m
-ExecStart=/usr/bin/etcd2
-Restart=always
-RestartSec=10s
-LimitNOFILE=40000
-TimeoutStartSec=0
-
-[Install]
-WantedBy=multi-user.target
-EOETCD
 
 # Patch rootfs
 mkdir -p /etc/systemd/system/docker.service.d

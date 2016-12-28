@@ -20,7 +20,12 @@ import (
 
 // Perform a reboot of the given instance
 func (vp *scalewayProvider) RebootInstance(instance providers.ClusterInstance) error {
-	if err := instance.Sync(vp.Logger); err != nil {
+	s, err := instance.Connect()
+	if err != nil {
+		return maskAny(err)
+	}
+	defer s.Close()
+	if err := s.Sync(vp.Logger); err != nil {
 		return maskAny(err)
 	}
 	if err := vp.client.PostServerAction(instance.ID, "reboot"); err != nil {

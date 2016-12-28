@@ -142,7 +142,12 @@ func (cil ClusterInstanceList) CreateClusterIP(cidr string) (net.IP, error) {
 // GetClusterID loads the cluster ID from any of the instances in the given list
 func (cil ClusterInstanceList) GetClusterID(log *logging.Logger) (string, error) {
 	for _, i := range cil {
-		result, err := i.GetClusterID(log)
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetClusterID(log)
 		if err == nil {
 			return result, nil
 		}
@@ -154,7 +159,12 @@ func (cil ClusterInstanceList) GetClusterID(log *logging.Logger) (string, error)
 // GetVaultCrt loads the vault certificate from any of the instances in the given list
 func (cil ClusterInstanceList) GetVaultCrt(log *logging.Logger) (string, error) {
 	for _, i := range cil {
-		result, err := i.GetVaultCrt(log)
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetVaultCrt(log)
 		if err == nil {
 			return result, nil
 		}
@@ -166,7 +176,12 @@ func (cil ClusterInstanceList) GetVaultCrt(log *logging.Logger) (string, error) 
 // GetVaultAddr loads the vault address from any of the instances in the given list
 func (cil ClusterInstanceList) GetVaultAddr(log *logging.Logger) (string, error) {
 	for _, i := range cil {
-		result, err := i.GetVaultAddr(log)
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetVaultAddr(log)
 		if err == nil {
 			return result, nil
 		}
@@ -177,7 +192,12 @@ func (cil ClusterInstanceList) GetVaultAddr(log *logging.Logger) (string, error)
 
 func (cil ClusterInstanceList) GetWeaveEnv(log *logging.Logger) (string, error) {
 	for _, i := range cil {
-		result, err := i.GetWeaveEnv(log)
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetWeaveEnv(log)
 		if err == nil {
 			return result, nil
 		}
@@ -188,7 +208,12 @@ func (cil ClusterInstanceList) GetWeaveEnv(log *logging.Logger) (string, error) 
 
 func (cil ClusterInstanceList) GetWeaveSeed(log *logging.Logger) (string, error) {
 	for _, i := range cil {
-		result, err := i.GetWeaveSeed(log)
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetWeaveSeed(log)
 		if err == nil {
 			return result, nil
 		}
@@ -200,8 +225,12 @@ func (cil ClusterInstanceList) GetWeaveSeed(log *logging.Logger) (string, error)
 // AddEtcdMember calls etcdctl to add a member to ETCD on any of the instances in the given list
 func (cil ClusterInstanceList) AddEtcdMember(log *logging.Logger, name, clusterIP string) error {
 	for _, i := range cil {
-		err := i.AddEtcdMember(log, name, clusterIP)
-		if err == nil {
+		s, err := i.Connect()
+		if err != nil {
+			return maskAny(err)
+		}
+		defer s.Close()
+		if err := s.AddEtcdMember(log, name, clusterIP); err == nil {
 			return nil
 		}
 		log.Warningf("cannot add '%s' to ETCD: %#v", name, err)
@@ -212,8 +241,12 @@ func (cil ClusterInstanceList) AddEtcdMember(log *logging.Logger, name, clusterI
 // RemoveEtcdMember calls etcdctl to remove a member from ETCD on any of the instances in the given list
 func (cil ClusterInstanceList) RemoveEtcdMember(log *logging.Logger, name, clusterIP string) error {
 	for _, i := range cil {
-		err := i.RemoveEtcdMember(log, name, clusterIP)
-		if err == nil {
+		s, err := i.Connect()
+		if err != nil {
+			return maskAny(err)
+		}
+		defer s.Close()
+		if err := s.RemoveEtcdMember(log, name, clusterIP); err == nil {
 			return nil
 		}
 		log.Warningf("cannot remove '%s' from ETCD: %#v", name, err)

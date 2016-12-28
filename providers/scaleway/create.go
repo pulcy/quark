@@ -259,15 +259,6 @@ func (vp *scalewayProvider) createAndStartServer(options providers.CreateInstanc
 // bootstrapServer copies etcd & fleet into the instances and runs the scaleway bootstrap script.
 // It then reboots the instances and waits until it is active again.
 func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, options providers.CreateInstanceOptions, machineID string) error {
-	if err := vp.copyEtcd(instance); err != nil {
-		vp.Logger.Errorf("copy etcd failed: %#v", err)
-		return maskAny(err)
-	}
-	if err := vp.copyFleet(instance); err != nil {
-		vp.Logger.Errorf("copy fleet failed: %#v", err)
-		return maskAny(err)
-	}
-
 	// Bootstrap
 	bootstrapOptions := struct {
 		ScalewayProviderConfig
@@ -282,10 +273,8 @@ func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, 
 	if err != nil {
 		return maskAny(err)
 	}
-	vp.Logger.Infof("Running bootstrap on %s. This may take a while...", instance.Name)
-	if err := instance.RunScript(vp.Logger, bootstrap, "/root/pulcy-bootstrap.sh"); err != nil {
-		// Failed expected because of a reboot
-		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
+	if err := vp.runBootstrap(instance, bootstrap); err != nil {
+		return maskAny(err)
 	}
 
 	// Update IP address
@@ -326,6 +315,20 @@ func (vp *scalewayProvider) bootstrapServer(instance providers.ClusterInstance, 
 
 	vp.Logger.Infof("Created server %s %s\n", instance.ID, instance.Name)
 
+	return nil
+}
+
+func (vp *scalewayProvider) runBootstrap(instance providers.ClusterInstance, bootstrap string) error {
+	s, err := instance.Connect()
+	if err != nil {
+		return maskAny(err)
+	}
+	defer s.Close()
+	vp.Logger.Infof("Running bootstrap on %s. This may take a while...", instance.Name)
+	if err := s.RunScript(vp.Logger, bootstrap, "/root/pulcy-bootstrap.sh"); err != nil {
+		// Failed expected because of a reboot
+		vp.Logger.Debugf("bootstrap failed (expected): %#v", err)
+	}
 	return nil
 }
 
@@ -464,31 +467,6 @@ func (vp *scalewayProvider) setupInstances(log *logging.Logger, instances []inst
 		return maskAny(err)
 	}
 
-	return nil
-}
-
-func (p *scalewayProvider) copyFleet(i providers.ClusterInstance) error {
-	fleetFile := fmt.Sprintf("fleet-%s-linux-amd64", p.FleetVersion)
-	url := fmt.Sprintf("https://github.com/coreos/fleet/releases/download/%s/%s.tar.gz", p.FleetVersion, fleetFile)
-	p.Logger.Debugf("downloading %s", fleetFile)
-	return maskAny(p.downloadAndCopyToInstance(url, i, "/tmp/fleet.tar.gz"))
-}
-
-func (p *scalewayProvider) copyEtcd(i providers.ClusterInstance) error {
-	etcdFile := fmt.Sprintf("etcd-%s-linux-amd64", p.EtcdVersion)
-	url := fmt.Sprintf("https://github.com/coreos/etcd/releases/download/%s/%s.tar.gz", p.EtcdVersion, etcdFile)
-	p.Logger.Debugf("downloading %s", etcdFile)
-	return maskAny(p.downloadAndCopyToInstance(url, i, "/tmp/etcd.tar.gz"))
-}
-
-func (p *scalewayProvider) downloadAndCopyToInstance(url string, i providers.ClusterInstance, instancePath string) error {
-	localPath, err := p.dm.Download(url)
-	if err != nil {
-		return maskAny(err)
-	}
-	if err := i.CopyTo(p.Logger, localPath, instancePath); err != nil {
-		return maskAny(err)
-	}
 	return nil
 }
 

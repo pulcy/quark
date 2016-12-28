@@ -126,9 +126,14 @@ func (vp *vultrProvider) waitUntilServerActive(id string) (lib.Server, error) {
 		if server.Status == "active" {
 			// Attempt an SSH connection
 			instance := vp.clusterInstance(server)
-			if _, err := instance.GetMachineID(vp.Logger); err == nil {
-				// Success
-				return server, nil
+			if s, err := instance.Connect(); err == nil {
+				if _, err := s.GetMachineID(vp.Logger); err == nil {
+					s.Close()
+					// Success
+					return server, nil
+				} else {
+					s.Close()
+				}
 			}
 		}
 		// Wait a while
