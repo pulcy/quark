@@ -389,6 +389,7 @@ func (vp *scalewayProvider) CreateCluster(log *logging.Logger, options providers
 				errors <- maskAny(err)
 				return
 			}
+			instanceOptions.RoleVault = isCore
 			if !isLB {
 				instanceOptions.NoPublicIPv4 = true
 			}

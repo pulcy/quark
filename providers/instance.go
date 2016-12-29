@@ -290,6 +290,13 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	if err != nil {
 		return maskAny(err)
 	}
+	var vaultServerKey string
+	if cio.RoleVault {
+		vaultServerKey, err = cio.VaultServerKey()
+		if err != nil {
+			return maskAny(err)
+		}
+	}
 	if _, err := s.Run(log, "sudo tee /etc/pulcy/vault.env", strings.Join(vaultEnv, "\n"), false); err != nil {
 		return maskAny(err)
 	}
@@ -301,6 +308,17 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 	}
 	if _, err := s.Run(log, "sudo chmod 0400 /etc/pulcy/vault.crt", "", false); err != nil {
 		return maskAny(err)
+	}
+	if cio.RoleVault {
+		if _, err := s.Run(log, "sudo /usr/bin/mkdir -p /etc/pulcy/vault", "", false); err != nil {
+			return maskAny(err)
+		}
+		if _, err := s.Run(log, "sudo tee /etc/pulcy/vault/key.pem", vaultServerKey, false); err != nil {
+			return maskAny(err)
+		}
+		if _, err := s.Run(log, "sudo chmod 0400 /etc/pulcy/vault/key.pem", "", false); err != nil {
+			return maskAny(err)
+		}
 	}
 
 	if _, err := s.Run(log, "sudo tee /etc/pulcy/weave.env", cio.WeaveEnv, false); err != nil {

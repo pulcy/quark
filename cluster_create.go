@@ -59,6 +59,8 @@ func init() {
 func createCluster(cmd *cobra.Command, args []string) {
 	createClusterFlags.VaultAddress = vaultCfg.VaultAddr
 	createClusterFlags.VaultCertificatePath = vaultCfg.VaultCACert
+	createClusterFlags.VaultServerKeyPath = vaultCfg.VaultCAKey
+	createClusterFlags.VaultServerKeyCommand = vaultCfg.VaultCAKeyCommand
 
 	requireProfile := false
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)

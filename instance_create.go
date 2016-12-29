@@ -47,6 +47,7 @@ func init() {
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.EtcdProxy, "etcd-proxy", false, "If set, the new instance will be an ETCD proxy")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleCore, "role-core", false, "If set, the new instance will get `core=true` metadata")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleLoadBalancer, "role-lb", false, "If set, the new instance will get `lb=true` metadata and register with cluster name in DNS")
+	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleVault, "role-vault", false, "If set, the new instance will get `vault=true` metadata")
 	cmdCreateInstance.Flags().BoolVar(&createInstanceFlags.RoleWorker, "role-worker", false, "If set, the new instance will get `worker=true` metadata")
 	cmdCreateInstance.Flags().IntVar(&createInstanceFlags.InstanceIndex, "index", 0, "Used to create `odd=true` or `even=true` metadata")
 	cmdCreateInstance.Flags().StringVar(&createInstanceFlags.TincCIDR, "tinc-cidr", "", "CIDR of the TINC network in this cluster")
@@ -59,6 +60,8 @@ func init() {
 func createInstance(cmd *cobra.Command, args []string) {
 	createInstanceFlags.VaultAddress = vaultCfg.VaultAddr
 	createInstanceFlags.VaultCertificatePath = vaultCfg.VaultCACert
+	createInstanceFlags.VaultServerKeyPath = vaultCfg.VaultCAKey
+	createInstanceFlags.VaultServerKeyCommand = vaultCfg.VaultCAKeyCommand
 
 	requireProfile := true
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)

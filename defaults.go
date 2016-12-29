@@ -25,7 +25,7 @@ import (
 
 const (
 	defaultInstanceCount       = 3
-	defaultGluonImage          = "pulcy/gluon:20161228085737"
+	defaultGluonImage          = "pulcy/gluon:20161229214643"
 	defaultRebootStrategy      = "etcd-lock"
 	defaultMinOSVersion        = "835.13.0"
 	defaultGithubTokenPathTmpl = "~/.pulcy/github-token"
@@ -81,6 +81,14 @@ func defaultVaultAddr() string {
 
 func defaultVaultCACert() string {
 	return os.Getenv("VAULT_CACERT")
+}
+
+func defaultVaultCAKey() string {
+	return os.Getenv("VAULT_CAKEY")
+}
+
+func defaultVaultCAKeyCommand() string {
+	return os.Getenv("VAULT_CAKEY_COMMAND")
 }
 
 func defaultRegisterInstance() bool {

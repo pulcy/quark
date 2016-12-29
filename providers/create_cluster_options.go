@@ -39,6 +39,8 @@ type CreateClusterOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
+	VaultServerKeyPath      string // Path of the vault ca-cert key file
+	VaultServerKeyCommand   string // Shell command that outputs a PEM-encoded CA key to use to as the Vault server SSL certificate key
 	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	HttpProxy               string // Address of the http proxy to use (if any)
 	WeavePassword           string // Encryption password of weave network
@@ -101,6 +103,8 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
 		VaultCertificatePath:    o.VaultCertificatePath,
+		VaultServerKeyPath:      o.VaultServerKeyPath,
+		VaultServerKeyCommand:   o.VaultServerKeyCommand,
 		TincCIDR:                o.TincCIDR,
 		TincIpv4:                tincAddress,
 		HttpProxy:               o.HttpProxy,
@@ -151,6 +155,9 @@ func (cco CreateClusterOptions) Validate() error {
 	}
 	if cco.VaultCertificatePath == "" {
 		return errors.New("Please specify a vault-cacert")
+	}
+	if cco.VaultServerKeyPath == "" && cco.VaultServerKeyCommand == "" {
+		return errors.New("Please specify a vault-key")
 	}
 	if cco.WeavePassword == "" {
 		return errors.New("Please specify a weave-password")
