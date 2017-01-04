@@ -25,7 +25,7 @@ import (
 
 const (
 	defaultInstanceCount       = 3
-	defaultGluonImage          = "pulcy/gluon:20161229214643"
+	defaultGluonImage          = "pulcy/gluon:20161231172828"
 	defaultRebootStrategy      = "etcd-lock"
 	defaultMinOSVersion        = "835.13.0"
 	defaultGithubTokenPathTmpl = "~/.pulcy/github-token"
