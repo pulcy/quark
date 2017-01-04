@@ -141,7 +141,7 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 	// user-data
 	isCore := true
 	isLB := true
-	instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, 0)
+	instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, 1)
 	if err != nil {
 		return maskAny(err)
 	}
