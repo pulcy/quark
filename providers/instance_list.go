@@ -190,6 +190,22 @@ func (cil ClusterInstanceList) GetVaultAddr(log *logging.Logger) (string, error)
 	return "", maskAny(fmt.Errorf("cannot get vault address"))
 }
 
+func (cil ClusterInstanceList) GetGluonEnv(log *logging.Logger) (string, error) {
+	for _, i := range cil {
+		s, err := i.Connect()
+		if err != nil {
+			return "", maskAny(err)
+		}
+		defer s.Close()
+		result, err := s.GetGluonEnv(log)
+		if err == nil {
+			return result, nil
+		}
+		log.Warningf("cannot get gluon.env from '%s': %#v", i, err)
+	}
+	return "", maskAny(fmt.Errorf("cannot get gluon.env"))
+}
+
 func (cil ClusterInstanceList) GetWeaveEnv(log *logging.Logger) (string, error) {
 	for _, i := range cil {
 		s, err := i.Connect()

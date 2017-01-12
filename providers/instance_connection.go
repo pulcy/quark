@@ -25,6 +25,8 @@ type InstanceConnection interface {
 
 	GetClusterID(log *logging.Logger) (string, error)
 
+	GetGluonEnv(log *logging.Logger) (string, error)
+
 	GetMachineID(log *logging.Logger) (string, error)
 
 	GetVaultCrt(log *logging.Logger) (string, error)
@@ -112,6 +114,13 @@ func (s *instanceConnection) RunScript(log *logging.Logger, scriptContent, scrip
 func (s *instanceConnection) GetClusterID(log *logging.Logger) (string, error) {
 	log.Debugf("Fetching cluster-id on %s", s.host)
 	id, err := s.Run(log, "sudo cat /etc/pulcy/cluster-id", "", false)
+	return id, maskAny(err)
+}
+
+func (s *instanceConnection) GetGluonEnv(log *logging.Logger) (string, error) {
+	log.Debugf("Fetching gluon.env on %s", s.host)
+	// gluon.env does not have to exists, so ignore errors by the `|| echo ""` parts.
+	id, err := s.Run(log, "sh -c 'sudo cat /etc/pulcy/gluon.env || echo \"\"'", "", false)
 	return id, maskAny(err)
 }
 

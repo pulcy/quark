@@ -321,6 +321,13 @@ func (i ClusterInstance) InitialSetup(log *logging.Logger, cio CreateInstanceOpt
 		}
 	}
 
+	if _, err := s.Run(log, "sudo tee /etc/pulcy/gluon.env", cio.GluonEnv, false); err != nil {
+		return maskAny(err)
+	}
+	if _, err := s.Run(log, "sudo chmod 0644 /etc/pulcy/gluon.env", "", false); err != nil {
+		return maskAny(err)
+	}
+
 	if _, err := s.Run(log, "sudo tee /etc/pulcy/weave.env", cio.WeaveEnv, false); err != nil {
 		return maskAny(err)
 	}

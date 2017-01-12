@@ -120,6 +120,16 @@ func createInstance(cmd *cobra.Command, args []string) {
 		return nil
 	})
 
+	// Fetch gluon.env
+	g.Go(func() error {
+		gluonEnv, err := instances.GetGluonEnv(log)
+		if err != nil {
+			Exitf("Failed to get gluon.env: %v\n", err)
+		}
+		createInstanceFlags.GluonEnv = gluonEnv
+		return nil
+	})
+
 	// Fetch weave.env
 	g.Go(func() error {
 		weaveEnv, err := instances.GetWeaveEnv(log)

@@ -39,6 +39,7 @@ type CreateInstanceOptions struct {
 	SSHKeyNames             []string // List of names of SSH keys to install
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
+	GluonEnv                string   // Content of gluon.env
 	RebootStrategy          string
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
