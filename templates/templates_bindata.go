@@ -190,7 +190,7 @@ func templatesScalewayBootstrapTmpl() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/scaleway-bootstrap.tmpl", size: 2511, mode: os.FileMode(420), modTime: time.Unix(1482860587, 0)}
+	info := bindataFileInfo{name: "templates/scaleway-bootstrap.tmpl", size: 2511, mode: os.FileMode(420), modTime: time.Unix(1484490255, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
@@ -230,7 +230,7 @@ func templatesTemplates_bindataGo() (*asset, error) {
 		return nil, err
 	}
 
-	info := bindataFileInfo{name: "templates/templates_bindata.go", size: 61440, mode: os.FileMode(420), modTime: time.Unix(1482909317, 0)}
+	info := bindataFileInfo{name: "templates/templates_bindata.go", size: 61440, mode: os.FileMode(420), modTime: time.Unix(1484490275, 0)}
 	a := &asset{bytes: bytes, info: info}
 	return a, nil
 }
