@@ -141,7 +141,7 @@ func (vp *vagrantProvider) CreateCluster(log *logging.Logger, options providers.
 	// user-data
 	isCore := true
 	isLB := true
-	instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, 0)
+	instanceOptions, err := options.NewCreateInstanceOptions(isCore, isLB, 1)
 	if err != nil {
 		return maskAny(err)
 	}
@@ -238,7 +238,12 @@ func (vp *vagrantProvider) ShowDomainRecords(domain string) error {
 
 // Perform a reboot of the given instance
 func (vp *vagrantProvider) RebootInstance(instance providers.ClusterInstance) error {
-	if _, err := instance.Exec(vp.Logger, "sudo shutdown -r now"); err != nil {
+	s, err := instance.Connect()
+	if err != nil {
+		return maskAny(err)
+	}
+	defer s.Close()
+	if _, err := s.Exec(vp.Logger, "sudo shutdown -r now"); err != nil {
 		return maskAny(err)
 	}
 	return nil

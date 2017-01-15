@@ -18,6 +18,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os/exec"
 	"strings"
 
 	"github.com/dchest/uniuri"
@@ -33,10 +34,12 @@ type CreateInstanceOptions struct {
 	RegisterInstance        bool     // If set, the instance will be register with its instance name in DNS
 	RoleCore                bool     // If set, this instance will get `core=true` metadata
 	RoleLoadBalancer        bool     // If set, this instance will get `lb=true` metadata and the instance will be registered under the cluster name in DNS
+	RoleVault               bool     // If set, this instance will get `vault=true` metadata and a `vault` role.
 	RoleWorker              bool     // If set, this instance will get `worker=true` metadata
 	SSHKeyNames             []string // List of names of SSH keys to install
 	SSHKeyGithubAccount     string   // Github account name used to fetch SSH keys
 	GluonImage              string   // Docker image containing gluon
+	GluonEnv                string   // Content of gluon.env
 	RebootStrategy          string
 	PrivateRegistryUrl      string // URL of private docker registry
 	PrivateRegistryUserName string // Username of private docker registry
@@ -45,6 +48,9 @@ type CreateInstanceOptions struct {
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
 	vaultCertificate        string // Contents of the vault ca-cert
+	VaultServerKeyPath      string // Path of the vault ca-cert key file
+	VaultServerKeyCommand   string // Shell command that outputs a PEM-encoded CA key to use to as the Vault server SSL certificate key
+	vaultServerKey          string // Contents of the vault ca-cert key file
 	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	TincIpv4                string // IP addres of tun0 (tinc) on this instance
 	HttpProxy               string // Address of the http proxy to use (if any)
@@ -72,6 +78,27 @@ func (o *CreateInstanceOptions) VaultCertificate() (string, error) {
 		o.vaultCertificate = string(raw)
 	}
 	return o.vaultCertificate, nil
+}
+
+// VaultServerKey reads the VaultServerKeyPath or executes the VaultServerKeyCommand and returns its content as a string
+func (o *CreateInstanceOptions) VaultServerKey() (string, error) {
+	if o.vaultServerKey == "" {
+		if o.VaultServerKeyPath != "" {
+			raw, err := ioutil.ReadFile(o.VaultServerKeyPath)
+			if err != nil {
+				return "", maskAny(err)
+			}
+			o.vaultServerKey = string(raw)
+		} else if o.VaultServerKeyCommand != "" {
+			cmd := exec.Command("sh", "-c", o.VaultServerKeyCommand)
+			output, err := cmd.Output()
+			if err != nil {
+				return "", maskAny(err)
+			}
+			o.vaultServerKey = string(output)
+		}
+	}
+	return o.vaultServerKey, nil
 }
 
 // SetVaultCertificate sets the content of the VaultCertificate
@@ -103,6 +130,9 @@ func (o *CreateInstanceOptions) CreateFleetMetadata(instanceIndex int) string {
 	if o.RoleLoadBalancer {
 		list = append(list, "lb=true")
 	}
+	if o.RoleVault {
+		list = append(list, "vault=true")
+	}
 	if o.RoleWorker {
 		list = append(list, "worker=true")
 	}
@@ -117,6 +147,9 @@ func (o *CreateInstanceOptions) Roles() string {
 	}
 	if o.RoleLoadBalancer {
 		list = append(list, "lb")
+	}
+	if o.RoleVault {
+		list = append(list, "vault")
 	}
 	if o.RoleWorker {
 		list = append(list, "worker")
@@ -152,6 +185,13 @@ func (cio CreateInstanceOptions) Validate(validateVault, validateWeave bool) err
 			return maskAny(err)
 		} else if content == "" {
 			return errors.New("Please specify a vault-cacert")
+		}
+		if cio.RoleVault {
+			if content, err := cio.VaultServerKey(); err != nil {
+				return maskAny(err)
+			} else if content == "" {
+				return errors.New("Please specify a vault-key")
+			}
 		}
 	}
 	if validateWeave {

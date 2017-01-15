@@ -53,12 +53,16 @@ func init() {
 	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.RegisterInstance, "register-instance", defaultRegisterInstance(), "If set, the instances will be registered with their instance name in DNS")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.HttpProxy, "http-proxy", "", "Address of HTTP proxy to use on instances")
 	cmdCreateCluster.Flags().StringVar(&createClusterFlags.WeavePassword, "weave-password", "", "Password of the weave network")
+	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.EnableFleet, "fleet-enabled", true, "If set, Fleet will be installed on the cluster")
+	cmdCreateCluster.Flags().BoolVar(&createClusterFlags.EnableKubernetes, "kubernetes-enabled", true, "If set, Kubernetes will be installed on the cluster")
 	cmdCluster.AddCommand(cmdCreateCluster)
 }
 
 func createCluster(cmd *cobra.Command, args []string) {
 	createClusterFlags.VaultAddress = vaultCfg.VaultAddr
 	createClusterFlags.VaultCertificatePath = vaultCfg.VaultCACert
+	createClusterFlags.VaultServerKeyPath = vaultCfg.VaultCAKey
+	createClusterFlags.VaultServerKeyCommand = vaultCfg.VaultCAKeyCommand
 
 	requireProfile := false
 	loadArgumentsFromCluster(cmd.Flags(), requireProfile)

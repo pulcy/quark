@@ -73,7 +73,9 @@ func (c *Cluster) parse(list *ast.ObjectList) error {
 	excludeList := []string{
 		"default-options",
 		"docker",
+		"orchestrator",
 		"fleet",
+		"kubernetes",
 		"quark",
 	}
 	if err := Decode(obj.Val, excludeList, nil, c); err != nil {

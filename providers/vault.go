@@ -20,10 +20,12 @@ import (
 )
 
 type VaultProviderConfig struct {
-	VaultAddr   string // URL of the vault
-	VaultCACert string // Path to a PEM-encoded CA cert file to use to verify the Vault server SSL certificate
-	VaultCAPath string // Path to a directory of PEM-encoded CA cert files to verify the Vault server SSL certificate
-	GithubToken string
+	VaultAddr         string // URL of the vault
+	VaultCACert       string // Path to a PEM-encoded CA cert file to use to verify the Vault server SSL certificate
+	VaultCAKey        string // Path to a PEM-encoded CA key file to use to verify the Vault server SSL certificate (vault servers only)
+	VaultCAKeyCommand string // Shell command that outputs a PEM-encoded CA key to use to as the Vault server SSL certificate key
+	VaultCAPath       string // Path to a directory of PEM-encoded CA cert files to verify the Vault server SSL certificate
+	GithubToken       string
 }
 
 type VaultProvider interface {

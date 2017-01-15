@@ -20,7 +20,12 @@ import (
 
 // Perform a reboot of the given instance
 func (vp *doProvider) RebootInstance(instance providers.ClusterInstance) error {
-	if _, err := instance.Exec(vp.Logger, "sudo shutdown -r now"); err != nil {
+	s, err := instance.Connect()
+	if err != nil {
+		return maskAny(err)
+	}
+	defer s.Close()
+	if _, err := s.Exec(vp.Logger, "sudo shutdown -r now"); err != nil {
 		return maskAny(err)
 	}
 	return nil

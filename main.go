@@ -100,6 +100,8 @@ func init() {
 	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultAddr, "vault-addr", defaultVaultAddr(), "URL of the vault (defaults to VAULT_ADDR environment variable)")
 	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCACert, "vault-cacert", defaultVaultCACert(), "Path to a PEM-encoded CA cert file to use to verify the Vault server SSL certificate")
 	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCAPath, "vault-capath", vaultCfg.VaultCAPath, "Path to a directory of PEM-encoded CA cert files to verify the Vault server SSL certificate")
+	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCAKey, "vault-ca-key", defaultVaultCAKey(), "Path to a PEM-encoded CA key file to use to verify the Vault server SSL certificate")
+	cmdMain.PersistentFlags().StringVar(&vaultCfg.VaultCAKeyCommand, "vault-ca-key-command", defaultVaultCAKeyCommand(), "Shell command that outputs a PEM-encoded CA key to use to as the Vault server SSL certificate key")
 	cmdMain.PersistentFlags().StringVarP(&vaultCfg.GithubToken, "github-token", "G", defaultGithubToken(), "Personal github token for administrator logins")
 }
 

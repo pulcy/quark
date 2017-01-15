@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/dchest/uniuri"
@@ -39,9 +40,13 @@ type CreateClusterOptions struct {
 	PrivateRegistryPassword string // Password of private docker registry
 	VaultAddress            string // URL of the vault
 	VaultCertificatePath    string // Path of the vault ca-cert file
+	VaultServerKeyPath      string // Path of the vault ca-cert key file
+	VaultServerKeyCommand   string // Shell command that outputs a PEM-encoded CA key to use to as the Vault server SSL certificate key
 	TincCIDR                string // CIDR for the TINC network inside the cluster (e.g. 192.168.35.0/24)
 	HttpProxy               string // Address of the http proxy to use (if any)
 	WeavePassword           string // Encryption password of weave network
+	EnableFleet             bool   // Install fleet on the cluster
+	EnableKubernetes        bool   // Install kubernetes on the cluster
 
 	instancePrefixes []string
 }
@@ -86,21 +91,30 @@ func (o *CreateClusterOptions) NewCreateInstanceOptions(isCore, isLB bool, insta
 	}
 
 	io := CreateInstanceOptions{
-		ClusterInfo:             o.ClusterInfo,
-		InstanceConfig:          o.InstanceConfig,
-		InstanceIndex:           instanceIndex,
-		RegisterInstance:        o.RegisterInstance,
-		RoleCore:                isCore,
-		RoleLoadBalancer:        isLB,
-		SSHKeyNames:             o.SSHKeyNames,
-		SSHKeyGithubAccount:     o.SSHKeyGithubAccount,
-		GluonImage:              o.GluonImage,
+		ClusterInfo:         o.ClusterInfo,
+		InstanceConfig:      o.InstanceConfig,
+		InstanceIndex:       instanceIndex,
+		RegisterInstance:    o.RegisterInstance,
+		RoleCore:            isCore,
+		RoleLoadBalancer:    isLB,
+		SSHKeyNames:         o.SSHKeyNames,
+		SSHKeyGithubAccount: o.SSHKeyGithubAccount,
+		GluonImage:          o.GluonImage,
+		GluonEnv: strings.Join([]string{
+			"GLUON_ETCD_USE_VAULT_CA=true",
+			"GLUON_ETCD_SECURE_CLIENTS=true",
+			fmt.Sprintf("GLUON_FLEET_ENABLED=%s", strconv.FormatBool(o.EnableFleet)),
+			fmt.Sprintf("GLUON_K8S_ENABLED=%s", strconv.FormatBool(o.EnableKubernetes)),
+			fmt.Sprintf("GLUON_K8S_API_DNS_NAME=%s", o.ClusterInfo.String()),
+		}, "\n"),
 		RebootStrategy:          o.RebootStrategy,
 		PrivateRegistryUrl:      o.PrivateRegistryUrl,
 		PrivateRegistryUserName: o.PrivateRegistryUserName,
 		PrivateRegistryPassword: o.PrivateRegistryPassword,
 		VaultAddress:            o.VaultAddress,
 		VaultCertificatePath:    o.VaultCertificatePath,
+		VaultServerKeyPath:      o.VaultServerKeyPath,
+		VaultServerKeyCommand:   o.VaultServerKeyCommand,
 		TincCIDR:                o.TincCIDR,
 		TincIpv4:                tincAddress,
 		HttpProxy:               o.HttpProxy,
@@ -151,6 +165,9 @@ func (cco CreateClusterOptions) Validate() error {
 	}
 	if cco.VaultCertificatePath == "" {
 		return errors.New("Please specify a vault-cacert")
+	}
+	if cco.VaultServerKeyPath == "" && cco.VaultServerKeyCommand == "" {
+		return errors.New("Please specify a vault-key")
 	}
 	if cco.WeavePassword == "" {
 		return errors.New("Please specify a weave-password")
