@@ -25,6 +25,12 @@ var (
 	cmdCreateInstance = &cobra.Command{
 		Use: "create",
 		Run: createInstance,
+		Example: `Create a new instance with role 'worker' in 'mycluster'.
+	./quark instance create -c worker@mycluster
+	
+Create a new instance with a specific cluster (tinc) IP.
+	./quark instance create -c worker@mycluster --tinc-ipv4=192.168.33.11
+`,
 	}
 
 	createInstanceFlags providers.CreateInstanceOptions
