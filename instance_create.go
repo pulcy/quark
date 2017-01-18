@@ -18,6 +18,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/cenkalti/backoff"
 	"github.com/pulcy/quark/providers"
 )
 
@@ -203,8 +204,16 @@ func createInstance(cmd *cobra.Command, args []string) {
 	}
 
 	// Add new instance to vault cluster
-	if err := newVaultProvider().AddMachine(createInstanceFlags.ClusterInfo.ID, machineID); err != nil {
-		log.Warningf("Failed to add machine to vault: %#v", err)
+	if err := backoff.Retry(func() error {
+		log.Debugf("Adding machine to vault cluster")
+		if err := newVaultProvider().AddMachine(createInstanceFlags.ClusterInfo.ID, machineID); err != nil {
+			log.Warningf("Failed to add machine to vault: %v", err)
+			return maskAny(err)
+		}
+		return nil
+	}, backoff.NewExponentialBackOff()); err != nil {
+		log.Warningf("Failed to add machine to vault: %v", err)
+		log.Warningf("To fix, run: vault-monkey cluster add -c %s -m %s", createInstanceFlags.ClusterInfo.ID, machineID)
 	}
 
 	// Add new instance to list
