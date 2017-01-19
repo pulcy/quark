@@ -188,8 +188,9 @@ func (s *instanceConnection) GetOSRelease(log *logging.Logger) (semver.Version, 
 // IsEtcdProxyFromService queries the ETCD2 service on the instance to look for an ETCD_PROXY variable.
 func (s *instanceConnection) IsEtcdProxyFromService(log *logging.Logger) (bool, error) {
 	log.Debugf("Fetching etcd proxy status on %s", s.host)
-	cat, err := s.Run(log, "sudo systemctl cat etcd2.service", "", false)
-	return strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
+	// weave-seed does not have to exists, so ignore errors by the `|| echo ""` parts.
+	cat, err := s.Run(log, "sh -c 'sudo systemctl cat etcd2.service || echo \"\"'", "", false)
+	return cat == "" || strings.Contains(cat, "ETCD_PROXY"), maskAny(err)
 }
 
 // AddEtcdMember calls etcdctl to add a member to ETCD
